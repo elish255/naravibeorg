@@ -99,6 +99,7 @@ function Index() {
       <AboutSection />
       <SiteFooter />
       <WhatsAppFab />
+      <SupportDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>
   );
 }
