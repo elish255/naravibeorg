@@ -6,7 +6,8 @@ import { SiteFooter } from "@/components/naravibe/SiteFooter";
 import { AboutSection } from "@/components/naravibe/AboutSection";
 import { ProfileCard } from "@/components/naravibe/ProfileCard";
 import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
-import { PER_PAGE, PROFILES, TOTAL_PAGES, WHATSAPP_URL } from "@/lib/vibe-data";
+import { SupportDialog } from "@/components/naravibe/SupportDialog";
+import { PER_PAGE, PROFILES, TOTAL_PAGES } from "@/lib/vibe-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
