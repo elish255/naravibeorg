@@ -223,7 +223,7 @@ function ChatDetails() {
         </div>
       )}
 
-      <WhatsAppFab />
+      <WhatsAppFab raised />
     </div>
   );
 }

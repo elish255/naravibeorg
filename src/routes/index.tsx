@@ -7,6 +7,7 @@ import { AboutSection } from "@/components/naravibe/AboutSection";
 import { ProfileCard } from "@/components/naravibe/ProfileCard";
 import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
 import { SupportDialog } from "@/components/naravibe/SupportDialog";
+import { PayoutToasts } from "@/components/naravibe/PayoutToasts";
 import { PER_PAGE, PROFILES, TOTAL_PAGES } from "@/lib/vibe-data";
 
 export const Route = createFileRoute("/")({
@@ -99,6 +100,7 @@ function Index() {
       <AboutSection />
       <SiteFooter />
       <WhatsAppFab />
+      <PayoutToasts />
       <SupportDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>
   );
