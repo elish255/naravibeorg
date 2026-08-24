@@ -10,7 +10,7 @@ const nav = [
 export function SiteHeader() {
   return (
     <header className="brand-gradient w-full">
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+      <div className="mx-auto flex max-w-7xl flex-row flex-wrap items-center justify-between gap-3 px-4 py-4 md:px-6">
         <a href="#home" className="shrink-0">
           <span className="block text-2xl font-extrabold italic tracking-tight text-primary-foreground">
             NARAVIBE

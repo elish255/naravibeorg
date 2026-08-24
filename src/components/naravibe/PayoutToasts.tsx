@@ -57,7 +57,7 @@ export function PayoutToasts() {
       <div
         key={toast.id}
         role="status"
-        className="card-soft flex animate-in items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3"
+        className="card-soft flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3"
       >
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand">
           <BadgeCheck className="h-5 w-5 text-primary-foreground" />
