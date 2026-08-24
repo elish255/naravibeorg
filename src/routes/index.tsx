@@ -6,7 +6,8 @@ import { SiteFooter } from "@/components/naravibe/SiteFooter";
 import { AboutSection } from "@/components/naravibe/AboutSection";
 import { ProfileCard } from "@/components/naravibe/ProfileCard";
 import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
-import { PER_PAGE, PROFILES, TOTAL_PAGES, WHATSAPP_URL } from "@/lib/vibe-data";
+import { SupportDialog } from "@/components/naravibe/SupportDialog";
+import { PER_PAGE, PROFILES, TOTAL_PAGES } from "@/lib/vibe-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [page, setPage] = useState(1);
+  const [supportOpen, setSupportOpen] = useState(false);
   const start = (page - 1) * PER_PAGE;
   const visible = PROFILES.slice(start, start + PER_PAGE);
 
@@ -59,14 +61,12 @@ function Index() {
               AVAILABLE NOW
             </h2>
           </div>
-          <a
-            href={WHATSAPP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => setSupportOpen(true)}
             className="card-soft flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground"
           >
             <MessageCircle className="h-4 w-4 text-brand" /> Customer services
-          </a>
+          </button>
         </div>
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -99,6 +99,7 @@ function Index() {
       <AboutSection />
       <SiteFooter />
       <WhatsAppFab />
+      <SupportDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
     </div>
   );
 }

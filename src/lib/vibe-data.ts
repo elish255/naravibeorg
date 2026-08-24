@@ -1,11 +1,12 @@
 export const REGISTER_URL = "https://adsblog.app/page/reg.php?reg=MrBusiness";
-export const WHATSAPP_NUMBER = "255743871339";
-export const WHATSAPP_PRE_MESSAGE = "HABAR NIELEKEZE KUHUSU NARAVIBE";
-export const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-  WHATSAPP_PRE_MESSAGE,
-)}`;
-// WhatsApp channel link (update when the official channel URL is provided)
-export const WHATSAPP_CHANNEL_URL = "https://whatsapp.com/channel/";
+export const SMS_NUMBER = "0743871339";
+export const SMS_PRE_MESSAGE = "HABAR NIELEKEZE KUHUSU NARAVIBE";
+export const SMS_URL = `sms:${SMS_NUMBER}?body=${encodeURIComponent(SMS_PRE_MESSAGE)}`;
+export const WHATSAPP_CHANNEL_URL =
+  "https://whatsapp.com/channel/0029VbCvS6cJZg4EHb909Y0N";
+
+export const slugify = (name: string) => name.toLowerCase();
+
 
 export type Profile = {
   name: string;

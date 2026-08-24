@@ -1,5 +1,6 @@
+import { Link } from "@tanstack/react-router";
 import { Calendar, Clock, MessageCircle, Tag } from "lucide-react";
-import { REGISTER_URL, formatTzs, usd, type Profile } from "@/lib/vibe-data";
+import { formatTzs, slugify, usd, type Profile } from "@/lib/vibe-data";
 
 export function ProfileCard({ profile }: { profile: Profile }) {
   return (
@@ -55,21 +56,24 @@ export function ProfileCard({ profile }: { profile: Profile }) {
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <a
-          href={REGISTER_URL}
-          className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-xs font-bold tracking-wide text-foreground transition-colors hover:bg-secondary"
-        >
-          <MessageCircle className="h-4 w-4" /> START CHAT
-        </a>
-        <a
-          href={REGISTER_URL}
-          className="brand-pill flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-bold"
-        >
-          TZS {formatTzs(profile.tzs)}
-        </a>
+      <div
+        aria-label={`Malipo TZS ${formatTzs(profile.tzs)}`}
+        className="brand-pill mt-4 flex select-none items-center justify-center rounded-xl px-3 py-3 text-base font-bold"
+      >
+        TZS {formatTzs(profile.tzs)}
       </div>
-      <p className="mt-2 text-right text-[11px] text-muted-foreground">≈ USD {usd(profile.tzs)}</p>
+
+      <Link
+        to="/chat/$slug"
+        params={{ slug: slugify(profile.name) }}
+        className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-bold tracking-wide text-foreground transition-colors hover:bg-secondary"
+      >
+        <MessageCircle className="h-4 w-4" /> START CHAT
+      </Link>
+
+      <p className="mt-2 text-center text-[11px] text-muted-foreground">
+        ≈ USD {usd(profile.tzs)}
+      </p>
     </article>
   );
 }
