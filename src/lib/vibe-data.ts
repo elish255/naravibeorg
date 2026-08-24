@@ -107,16 +107,16 @@ const ratings = ["4.7", "4.8", "4.9", "5.0"];
 const minuteOptions = [25, 30, 35, 40, 45];
 
 export const PROFILES: Profile[] = names.map(([name, country, avatar], i) => {
-  const minutes = minuteOptions[i % minuteOptions.length];
+  const minutes = minuteOptions[i % minuteOptions.length]!;
   const perMinute = 1100 + ((i * 37) % 350);
   const tzs = Math.round((minutes * perMinute) / 500) * 500;
   return {
     name,
     country,
     avatar,
-    rating: ratings[(i * 3) % ratings.length],
+    rating: ratings[(i * 3) % ratings.length]!,
     minutes,
-    topic: topics[i % topics.length],
+    topic: topics[i % topics.length]!,
     tzs,
   };
 });
