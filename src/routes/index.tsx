@@ -13,7 +13,7 @@ import { PER_PAGE, PROFILES, TOTAL_PAGES } from "@/lib/vibe-data";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "NaraVibe – Lipwa kwa Kuchati na Wageni Duniani" },
+      { title: "NaraVibe | Get Paid to Chat with Foreigners" },
       {
         name: "description",
         content:
