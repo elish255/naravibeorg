@@ -1,5 +1,5 @@
 import { Download, MessageCircle, Radio } from "lucide-react";
-import { REGISTER_URL, SMS_URL, WHATSAPP_CHANNEL_URL } from "@/lib/vibe-data";
+import { REGISTER_URL, WHATSAPP_CHANNEL_URL } from "@/lib/vibe-data";
 
 export function SiteFooter() {
   return (
@@ -22,12 +22,7 @@ export function SiteFooter() {
               CUSTOMER SERVICES
             </h4>
             <div className="mt-4 flex flex-col gap-3">
-              <a
-                href={SMS_URL}
-                className="flex w-fit items-center gap-2 rounded-full bg-primary-foreground/10 px-4 py-2 text-sm font-medium transition-colors hover:bg-primary-foreground/20"
-              >
-                <MessageCircle className="h-4 w-4" />
-              </a>
+
               <a
                 href={WHATSAPP_CHANNEL_URL}
                 target="_blank"

@@ -1,7 +1,4 @@
 export const REGISTER_URL = "/register";
-export const SMS_NUMBER = "0743871339";
-export const SMS_PRE_MESSAGE = "HABAR NIELEKEZE KUHUSU NARAVIBE";
-export const SMS_URL = `sms:${SMS_NUMBER}?body=${encodeURIComponent(SMS_PRE_MESSAGE)}`;
 export const WHATSAPP_CHANNEL_URL =
   "https://whatsapp.com/channel/0029VbCvS6cJZg4EHb909Y0N";
 

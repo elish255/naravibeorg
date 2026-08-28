@@ -1,5 +1,5 @@
-import { ChevronLeft, Info, MessageCircle, Phone, X } from "lucide-react";
-import { SMS_URL, WHATSAPP_CHANNEL_URL } from "@/lib/vibe-data";
+import { ChevronLeft, Info, MessageCircle, X } from "lucide-react";
+import { WHATSAPP_CHANNEL_URL } from "@/lib/vibe-data";
 
 export function SupportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null;
@@ -46,19 +46,7 @@ export function SupportDialog({ open, onClose }: { open: boolean; onClose: () =>
           <ChevronLeft className="h-5 w-5 shrink-0 text-brand" />
         </a>
 
-        <a
-          href={SMS_URL}
-          className="mt-3 flex items-center gap-3 rounded-2xl bg-secondary/70 p-4 text-left transition-colors hover:bg-secondary"
-        >
-          <span className="card-soft flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-card">
-            <Phone className="h-6 w-6 text-foreground" />
-          </span>
-          <span className="flex-1">
-            <span className="block text-base font-bold text-foreground">Send SMS</span>
-            <span className="block text-sm text-muted-foreground">Bonyeza hapa kutuma ujumbe</span>
-          </span>
-          <ChevronLeft className="h-5 w-5 shrink-0 text-brand" />
-        </a>
+
 
         <div className="mt-4 space-y-2 rounded-2xl bg-secondary/50 p-4 text-sm text-muted-foreground">
           <p className="flex gap-2">
@@ -68,13 +56,7 @@ export function SupportDialog({ open, onClose }: { open: boolean; onClose: () =>
               taarifa zaidi.
             </span>
           </p>
-          <p className="flex gap-2">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              <strong className="text-foreground">SMS:</strong> Bonyeza ili kutuma ujumbe kwa msaada
-              wa haraka.
-            </span>
-          </p>
+
         </div>
 
         <button
