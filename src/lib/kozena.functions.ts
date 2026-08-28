@@ -1,10 +1,41 @@
-import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { createServerFn, createMiddleware } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
+import { createClient } from "@supabase/supabase-js";
 
 export const PAYMENT_AMOUNT = 14500;
 export const PAYMENT_CURRENCY = "TZS";
 
 const MOBILIPA_BASE = "https://api.mobilipa.store";
+
+const requireSupabaseAuth = createMiddleware({ type: "function" }).server(async ({ next }) => {
+  const url = process.env["SUPABASE_URL"];
+  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+  if (!url || !key) throw new Error("Missing Supabase environment variables.");
+
+  const request = getRequest();
+  const authHeader = request?.headers?.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) throw new Error("Unauthorized");
+
+  const token = authHeader.slice(7).trim();
+  if (!token || token.split(".").length !== 3) throw new Error("Unauthorized");
+
+  const supabase = createClient(url, key, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data, error } = await supabase.auth.getClaims(token);
+  if (error || !data?.claims?.sub) throw new Error("Unauthorized");
+
+  return next({ context: { supabase, userId: data.claims.sub, claims: data.claims } });
+});
+
+function getAdminClient() {
+  const url = process.env["SUPABASE_URL"];
+  const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
 
 function normalizePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -22,7 +53,7 @@ export const loginWithUsername = createServerFn({ method: "POST" })
     return { username: input.username.trim(), password: input.password };
   })
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = getAdminClient();
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
@@ -108,7 +139,7 @@ export const startPayment = createServerFn({ method: "POST" })
     const orderId = String(json.data["order_id"] ?? "");
     const reference = json.data["reference"] ? String(json.data["reference"]) : null;
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = getAdminClient();
     await supabaseAdmin.from("payments").insert({
       user_id: userId,
       phone: msisdn,
@@ -152,7 +183,7 @@ export const checkPaymentStatus = createServerFn({ method: "POST" })
     const paymentStatus = String(json?.data?.["payment_status"] ?? "PENDING").toUpperCase();
     const transid = json?.data?.["transid"] ? String(json.data["transid"]) : null;
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = getAdminClient();
     await supabaseAdmin
       .from("payments")
       .update({ status: paymentStatus, transid })

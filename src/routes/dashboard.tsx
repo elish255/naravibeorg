@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import { PROFILES, slugify } from "@/lib/vibe-data";
 import { LogOut, MessageCircle, Wallet, CheckCircle2 } from "lucide-react";
 
