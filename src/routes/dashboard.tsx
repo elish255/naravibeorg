@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { PROFILES, slugify } from "@/lib/vibe-data";
 import { LogOut, MessageCircle, Wallet, CheckCircle2 } from "lucide-react";
+
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -19,12 +20,17 @@ type Payment = { id: string; amount: number; currency: string; phone: string; st
 
 function DashboardPage() {
   const navigate = useNavigate();
+  const supabase = getSupabaseBrowserClient();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
+      if (!supabase) {
+        navigate({ to: "/login" });
+        return;
+      }
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) { navigate({ to: "/login" }); return; }
       const uid = sessionData.session.user.id;
@@ -37,9 +43,10 @@ function DashboardPage() {
       setPayments((pay ?? []) as Payment[]);
       setLoading(false);
     })();
-  }, [navigate]);
+  }, [navigate, supabase]);
 
   async function signOut() {
+    if (!supabase) return;
     await supabase.auth.signOut();
     navigate({ to: "/login", replace: true });
   }

@@ -1,16 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL as string,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
-  { auth: { persistSession: true, autoRefreshToken: true } },
-);
 import { useEffect, useRef, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { ChevronLeft, Lock, MessageCircle, Send, UserPlus, X } from "lucide-react";
 import { SiteHeader } from "@/components/naravibe/SiteHeader";
 import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
 import { PROFILES, REGISTER_URL, formatTzs, slugify } from "@/lib/vibe-data";
+
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export const Route = createFileRoute("/chat/$slug")({
   head: () => ({
@@ -41,6 +37,7 @@ const nowTime = () =>
 function ChatDetails() {
   const { slug } = Route.useParams();
   const navigate = useNavigate();
+  const supabase = getSupabaseBrowserClient();
   const profile = PROFILES.find((p) => slugify(p.name) === slug);
 
   const [typing, setTyping] = useState(true);
@@ -51,18 +48,21 @@ function ChatDetails() {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // START CHAT must always open the conversation. Registration/payment is
+    // requested only when the user tries to send their first reply.
     (async () => {
+      if (!supabase) return;
       const { data } = await supabase.auth.getSession();
-      if (!data.session) {
+      if (!data.session) return;
 
-        return;
-      }
-      const { data: p } = await supabase.from("profiles").select("has_paid").eq("id", data.session.user.id).maybeSingle();
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("has_paid")
+        .eq("id", data.session.user.id)
+        .maybeSingle();
       if (p?.has_paid) setPaid(true);
-      else if (p) navigate({ to: "/payment" });
-
     })();
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     if (!profile) return;
@@ -94,14 +94,31 @@ function ChatDetails() {
     );
   }
 
-  const send = () => {
-    if (!draft.trim() || locked || !paid) {
+  const send = async () => {
+    // The foreigner can start the conversation first. The registration gate
+    // appears only when the local user presses Send to reply.
+    if (locked) return;
+
+    if (!draft.trim()) {
       if (!paid) setLocked(true);
       return;
     }
+
+    const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+
+    if (!session) {
+      try { sessionStorage.setItem("naravibe_pending_chat", slug); } catch {}
+      setLocked(true);
+      return;
+    }
+
+    if (!paid) {
+      navigate({ to: "/payment" });
+      return;
+    }
+
     setMessages((m) => [...m, { from: "me", text: draft.trim(), time: nowTime() }]);
     setDraft("");
-    setTimeout(() => setLocked(true), 700);
   };
 
   return (
@@ -224,13 +241,13 @@ function ChatDetails() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand">
               <Lock className="h-8 w-8 text-primary-foreground" />
             </div>
-            <h2 className="mt-4 text-2xl font-extrabold text-foreground">Huwezi Kutuma Ujumbe</h2>
+            <h2 className="mt-4 text-2xl font-extrabold text-foreground">Jisajili Ili Kujibu</h2>
             <p className="mt-3 text-sm text-muted-foreground">
               Huwezi kutuma ujumbe au kupata huduma hii kwa sasa{" "}
               <strong className="text-foreground">mpaka ujisajili</strong> kwenye NaraVibe.
             </p>
             <p className="mt-2 text-sm text-muted-foreground/80">
-              Jisajili sasa ili uweze kuendelea na mazungumzo na kuanza kupata fedha.
+              Jisajili sasa, kisha lipia kwa Push na urudi Dashboard kuendelea kuchat na kuanza kupata malipo.
             </p>
             <a
               href={REGISTER_URL}

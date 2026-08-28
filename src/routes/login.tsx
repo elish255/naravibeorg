@@ -1,14 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL as string,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
-  { auth: { persistSession: true, autoRefreshToken: true } },
-);
 import { loginWithUsername } from "@/lib/kozena.functions";
+
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -27,6 +23,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const supabase = getSupabaseBrowserClient();
   const signIn = useServerFn(loginWithUsername);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -34,18 +31,25 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    const client = supabase;
+    if (!client) return;
+    client.auth.getSession().then(({ data }) => {
       if (data.session) navigate({ to: "/payment" });
     });
-  }, [navigate]);
+  }, [navigate, supabase]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const client = supabase;
+    if (!client) {
+      setError("Mfumo wa kuingia haujaunganishwa vizuri. Tafadhali jaribu tena baadaye.");
+      return;
+    }
     setLoading(true);
     try {
       const tokens = await signIn({ data: { username, password } });
-      const { error: sessionError } = await supabase.auth.setSession({
+      const { error: sessionError } = await client.auth.setSession({
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
       });

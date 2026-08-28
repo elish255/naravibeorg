@@ -1,12 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL as string,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
-  { auth: { persistSession: true, autoRefreshToken: true } },
-);
+
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export const Route = createFileRoute("/register")({
   head: () => ({
@@ -40,6 +36,7 @@ const COUNTRIES = [
 
 function RegisterPage() {
   const navigate = useNavigate();
+  const supabase = getSupabaseBrowserClient();
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -54,7 +51,9 @@ function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    const client = supabase;
+    if (!client) return;
+    client.auth.getSession().then(({ data }) => {
       if (data.session) navigate({ to: "/payment" });
     });
   }, [navigate]);
@@ -68,8 +67,13 @@ function RegisterPage() {
       setError("Password hazifanani.");
       return;
     }
+    const client = supabase;
+    if (!client) {
+      setError("Mfumo wa usajili haujaunganishwa vizuri. Tafadhali jaribu tena baadaye.");
+      return;
+    }
     setLoading(true);
-    const { data, error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await client.auth.signUp({
       email: form.email,
       password: form.password,
       options: {

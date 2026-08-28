@@ -1,14 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL as string,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
-  { auth: { persistSession: true, autoRefreshToken: true } },
-);
 import { startPayment, checkPaymentStatus, PAYMENT_AMOUNT } from "@/lib/kozena.functions";
+
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
@@ -30,6 +26,7 @@ type Phase = "form" | "waiting" | "failed";
 
 function PaymentPage() {
   const navigate = useNavigate();
+  const supabase = getSupabaseBrowserClient();
   const createOrder = useServerFn(startPayment);
   const pollStatus = useServerFn(checkPaymentStatus);
 
@@ -41,12 +38,18 @@ function PaymentPage() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
+    const client = supabase;
+    if (!client) {
+      setError("Mfumo wa malipo haujaunganishwa vizuri. Tafadhali jaribu tena baadaye.");
+      setReady(true);
+      return;
+    }
+    client.auth.getSession().then(async ({ data }) => {
       if (!data.session) {
         navigate({ to: "/login" });
         return;
       }
-      const { data: profile } = await supabase
+      const { data: profile } = await client
         .from("profiles")
         .select("phone, has_paid")
         .eq("id", data.session.user.id)
@@ -61,7 +64,7 @@ function PaymentPage() {
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [navigate]);
+  }, [navigate, supabase]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
