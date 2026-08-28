@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, Lock, MessageCircle, Send, UserPlus, X } from "lucide-react";
 import { SiteHeader } from "@/components/naravibe/SiteHeader";
 import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
@@ -40,7 +41,22 @@ function ChatDetails() {
   const [messages, setMessages] = useState<Bubble[]>([]);
   const [draft, setDraft] = useState("");
   const [locked, setLocked] = useState(false);
+  const [paid, setPaid] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+
+        return;
+      }
+      const { data: p } = await supabase.from("profiles").select("has_paid").eq("id", data.session.user.id).maybeSingle();
+      if (p?.has_paid) setPaid(true);
+      else if (p) navigate({ to: "/payment" });
+
+    })();
+  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -73,7 +89,10 @@ function ChatDetails() {
   }
 
   const send = () => {
-    if (!draft.trim() || locked) return;
+    if (!draft.trim() || locked || !paid) {
+      if (!paid) setLocked(true);
+      return;
+    }
     setMessages((m) => [...m, { from: "me", text: draft.trim(), time: nowTime() }]);
     setDraft("");
     setTimeout(() => setLocked(true), 700);
