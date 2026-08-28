@@ -15,7 +15,7 @@ function normalizePhone(raw: string): string {
 
 /** Sign in with a username instead of an email address. */
 export const loginWithUsername = createServerFn({ method: "POST" })
-  .inputValidator((input: { username: string; password: string }) => {
+  .validator((input: { username: string; password: string }) => {
     if (!input?.username?.trim() || !input?.password) {
       throw new Error("Weka username na password.");
     }
@@ -67,7 +67,7 @@ export const loginWithUsername = createServerFn({ method: "POST" })
 /** Create a Mobilipa order and trigger the USSD push to the customer's phone. */
 export const startPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { phone: string }) => {
+  .validator((input: { phone: string }) => {
     const digits = (input?.phone ?? "").replace(/\D/g, "");
     if (digits.length < 9) throw new Error("Namba ya simu si sahihi.");
     return { phone: digits };
@@ -129,7 +129,7 @@ export const startPayment = createServerFn({ method: "POST" })
 /** Poll Mobilipa for the order status and unlock the dashboard when it completes. */
 export const checkPaymentStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string }) => {
+  .validator((input: { orderId: string }) => {
     if (!input?.orderId) throw new Error("Order id inahitajika.");
     return { orderId: input.orderId };
   })
