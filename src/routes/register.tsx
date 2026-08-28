@@ -1,8 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-
-
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import logo from "@/assets/login-logo.png.asset.json";
 
 export const Route = createFileRoute("/register")({
   head: () => ({
@@ -36,7 +34,6 @@ const COUNTRIES = [
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const supabase = getSupabaseBrowserClient();
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -51,11 +48,12 @@ function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const client = supabase;
-    if (!client) return;
-    client.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/payment" });
-    });
+    try {
+      const raw = localStorage.getItem("naravibe_user");
+      const paid = localStorage.getItem("naravibe_paid") === "true";
+      if (raw && paid) navigate({ to: "/dashboard" });
+      else if (raw) navigate({ to: "/payment" });
+    } catch {}
   }, [navigate]);
 
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -67,40 +65,22 @@ function RegisterPage() {
       setError("Password hazifanani.");
       return;
     }
-    const client = supabase;
-    if (!client) {
-      setError("Mfumo wa usajili haujaunganishwa vizuri. Tafadhali jaribu tena baadaye.");
-      return;
-    }
     setLoading(true);
-    const { data, error: signUpError } = await client.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: {
-          full_name: form.name,
-          username: form.username,
-          phone: form.phone,
-          country: form.country,
-        },
-      },
-    });
-    setLoading(false);
-
-    if (signUpError) {
-      setError(
-        /duplicate|unique/i.test(signUpError.message)
-          ? "Username au email tayari imetumika."
-          : signUpError.message,
+    try {
+      localStorage.setItem(
+        "naravibe_user",
+        JSON.stringify({
+          name: form.name, username: form.username, phone: form.phone, email: form.email,
+          country: form.country, password: form.password, created_at: new Date().toISOString(),
+        }),
       );
-      return;
+      localStorage.removeItem("naravibe_paid");
+      setLoading(false);
+      navigate({ to: "/payment" });
+    } catch {
+      setLoading(false);
+      setError("Imeshindikana kuhifadhi taarifa zako.");
     }
-    if (!data.session) {
-      setError("Akaunti imefunguliwa. Tafadhali ingia.");
-      return;
-    }
-    navigate({ to: "/payment" });
   }
 
   return (
@@ -109,7 +89,7 @@ function RegisterPage() {
         <div className="k-card grid grid-cols-1 lg:grid-cols-12">
           <aside className="hidden bg-k-dark p-10 text-white lg:col-span-5 lg:flex lg:flex-col">
             <div className="mb-10 inline-flex w-fit rounded-xl bg-white px-3 py-2">
-              <img src="/favicon.png" alt="KOZENA SITE" className="h-8 w-8 rounded-lg object-contain" />
+              <img src={logo.url} alt="KOZENA SITE" className="h-8 w-auto object-contain" />
             </div>
             <h2 className="text-2xl font-bold">Join our community</h2>
             <p className="mt-3 text-sm text-white/60">
@@ -233,7 +213,7 @@ function RegisterPage() {
                 </button>
                 <p className="mt-4 text-center text-sm text-k-slate-500">
                   Tayari una akaunti?{" "}
-                  <Link to="/login" className="font-bold text-k-indigo">
+                  <Link to="/register" className="font-bold text-k-indigo">
                     Login
                   </Link>
                 </p>

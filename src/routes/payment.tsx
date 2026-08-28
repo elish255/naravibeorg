@@ -1,10 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-
-import { startPayment, checkPaymentStatus, PAYMENT_AMOUNT } from "@/lib/kozena.functions";
-
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { startPayment, checkPaymentStatus, PAYMENT_AMOUNT } from "@/lib/mobilipa.functions";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
@@ -13,7 +10,7 @@ export const Route = createFileRoute("/payment")({
       {
         name: "description",
         content:
-          "Lipia ada ya KOZENA SITE kwa USSD Push pekee. Weka namba yako ya simu na thibitisha malipo kwenye simu.",
+          "Lipia ada ya KOZENA SITE kwa USSD Push. Weka namba yako ya simu na thibitisha malipo kwenye simu.",
       },
       { property: "og:title", content: "Lipa — KOZENA SITE" },
       { property: "og:description", content: "Lipia kwa USSD Push moja kwa moja kwenye simu yako." },
@@ -22,11 +19,52 @@ export const Route = createFileRoute("/payment")({
   component: PaymentPage,
 });
 
+const OPERATORS = [
+  {
+    id: "mpesa",
+    name: "M-Pesa",
+    ussd: "*150*00#",
+    steps: [
+      "Bonyeza *150*00#",
+      "Chagua Lipa kwa M-PESA",
+      "Chagua Weka Namba ya Kampuni",
+      "Weka M-PESA LIPA NAMBA: 354136248",
+      "Weka kiasi 14,500 TZS",
+      "Weka namba ya siri",
+    ],
+  },
+  {
+    id: "airtel",
+    name: "Airtel Money",
+    ussd: "*150*60#",
+    steps: [
+      "Bonyeza *150*60#",
+      "Chagua Lipia Bili",
+      "Chagua LIPA KWA SIMU (MITANDAO YOTE)",
+      "Chagua LIPA KWA VODA LIPA",
+      "Weka kiasi 14,500 TZS",
+      "Ingiza kumbukumbu ya malipo: 354136248",
+    ],
+  },
+  {
+    id: "halo",
+    name: "Halopesa",
+    ussd: "*150*88#",
+    steps: [
+      "Bonyeza *150*88#",
+      "Chagua (5) Lipia Bidhaa",
+      "Chagua (3) M-PESA",
+      "Weka namba ya malipo: 354136248",
+      "Weka kiasi 14,500 TZS",
+      "Ingiza namba ya siri",
+    ],
+  },
+];
+
 type Phase = "form" | "waiting" | "failed";
 
 function PaymentPage() {
   const navigate = useNavigate();
-  const supabase = getSupabaseBrowserClient();
   const createOrder = useServerFn(startPayment);
   const pollStatus = useServerFn(checkPaymentStatus);
 
@@ -35,51 +73,40 @@ function PaymentPage() {
   const [phase, setPhase] = useState<Phase>("form");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [openOp, setOpenOp] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    const client = supabase;
-    if (!client) {
-      setError("Mfumo wa malipo haujaunganishwa vizuri. Tafadhali jaribu tena baadaye.");
+    try {
+      const raw = localStorage.getItem("naravibe_user");
+      const paid = localStorage.getItem("naravibe_paid") === "true";
+      if (!raw) { navigate({ to: "/register" }); return; }
+      const user = JSON.parse(raw) as { phone?: string };
+      if (paid) { navigate({ to: "/dashboard" }); return; }
+      if (user?.phone) setPhone(user.phone);
       setReady(true);
-      return;
-    }
-    client.auth.getSession().then(async ({ data }) => {
-      if (!data.session) {
-        navigate({ to: "/login" });
-        return;
-      }
-      const { data: profile } = await client
-        .from("profiles")
-        .select("phone, has_paid")
-        .eq("id", data.session.user.id)
-        .maybeSingle();
-      if (profile?.has_paid) {
-        navigate({ to: "/dashboard" });
-        return;
-      }
-      if (profile?.phone) setPhone(profile.phone);
-      setReady(true);
-    });
-    return () => {
-      if (timer.current) clearInterval(timer.current);
-    };
-  }, [navigate, supabase]);
+    } catch { navigate({ to: "/register" }); }
+    return () => { if (timer.current) clearInterval(timer.current); };
+  }, [navigate]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setPhase("waiting");
     try {
-      const order = await createOrder({ data: { phone } });
+      const rawUser = localStorage.getItem("naravibe_user");
+      const user = rawUser ? JSON.parse(rawUser) as { name?: string; email?: string } : {};
+      const order = await createOrder({ data: { phone, buyerName: user.name, buyerEmail: user.email } });
       setMessage(order.message);
       let attempts = 0;
       timer.current = setInterval(async () => {
         attempts += 1;
         try {
           const res = await pollStatus({ data: { orderId: order.order_id } });
-          if (["COMPLETED", "SUCCESS", "PAID"].includes(res.payment_status)) {
+          if (res.payment_status === "COMPLETED") {
             if (timer.current) clearInterval(timer.current);
+            localStorage.setItem("naravibe_paid", "true");
+            localStorage.setItem("naravibe_payment", JSON.stringify({ order_id: order.order_id, status: res.payment_status, paid_at: new Date().toISOString() }));
             navigate({ to: "/dashboard" });
             return;
           }
@@ -149,7 +176,7 @@ function PaymentPage() {
             </div>
             <div>
               <h3 className="font-semibold">Tanzania</h3>
-              <p className="text-xs text-k-slate-500">Lipia moja kwa moja kwa USSD Push pekee</p>
+              <p className="text-xs text-k-slate-500">Lipia moja kwa moja kwa USSD Push</p>
             </div>
           </div>
 
@@ -204,6 +231,42 @@ function PaymentPage() {
           </div>
         </section>
 
+        <section className="overflow-hidden rounded-3xl border-[1.5px] border-k-slate-200 bg-white">
+          <div className="border-b border-k-slate-100 px-5 py-4">
+            <h3 className="font-semibold">Njia nyingine za kulipia</h3>
+            <p className="text-xs text-k-slate-500">Tumia LIPA NAMBA kama push haijafika</p>
+          </div>
+          {OPERATORS.map((op) => (
+            <div key={op.id} className="border-b border-k-slate-100 last:border-0">
+              <button
+                type="button"
+                onClick={() => setOpenOp((c) => (c === op.id ? null : op.id))}
+                className="flex w-full items-center justify-between px-5 py-4 text-left"
+              >
+                <span>
+                  <span className="block text-sm font-semibold">{op.name}</span>
+                  <span className="block text-xs text-k-slate-500">{op.ussd}</span>
+                </span>
+                <span className="text-k-slate-500">{openOp === op.id ? "▲" : "▼"}</span>
+              </button>
+              {openOp === op.id && (
+                <ol className="space-y-2 bg-k-slate-50 px-5 py-4 text-sm">
+                  {op.steps.map((s, i) => (
+                    <li key={s} className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-k-green-100 text-xs font-bold text-k-green-800">
+                        {i + 1}
+                      </span>
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                  <li className="pt-2 text-xs text-k-slate-500">
+                    Jina la Biashara: <strong>KOZENA SITE</strong>
+                  </li>
+                </ol>
+              )}
+            </div>
+          ))}
+        </section>
       </main>
     </div>
   );
