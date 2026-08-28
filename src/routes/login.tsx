@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { loginWithUsername } from "@/lib/kozena.functions";
-import logo from "@/assets/login-logo.png.asset.json";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -66,7 +65,7 @@ function LoginPage() {
             <p className="mt-3 text-sm text-white/75">
               Ingia kwenye akaunti yako na endelea na malipo yako.
             </p>
-            <img src={logo.url} alt="KOZENA SITE" className="mt-auto h-10 w-auto object-contain" />
+            <img src="/favicon.png" alt="KOZENA SITE" className="mt-auto h-10 w-10 rounded-lg object-contain" />
           </aside>
 
           <section className="p-6 md:p-10 lg:col-span-7">
