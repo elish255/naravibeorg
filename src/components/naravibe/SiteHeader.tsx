@@ -16,7 +16,7 @@ export function SiteHeader() {
             NARAVIBE
           </span>
           <span className="block text-[10px] tracking-[0.2em] text-primary-foreground/60">
-            Share your countrie's vibe
+            Share your country's vibe
           </span>
         </a>
 
@@ -46,7 +46,7 @@ export function SiteHeader() {
               href={REGISTER_URL}
               className="brand-pill flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold"
             >
-              <Wallet className="h-4 w-4" /> Withdraw
+              <Wallet className="h-4 w-4" /> Jisajili Sasa
             </a>
             <a
               href={REGISTER_URL}
@@ -64,7 +64,7 @@ export function SiteHeader() {
         </div>
 
         <a
-          href={REGISTER_URL}
+          href="/login"
           className="flex shrink-0 items-center gap-2 rounded-full bg-card px-5 py-2 text-sm font-semibold text-foreground"
         >
           <User className="h-4 w-4" /> Login

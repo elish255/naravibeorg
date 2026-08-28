@@ -1,4 +1,4 @@
-export const REGISTER_URL = "https://adsblog.app/page/reg.php?reg=MrBusiness";
+export const REGISTER_URL = "/register";
 export const SMS_NUMBER = "0743871339";
 export const SMS_PRE_MESSAGE = "HABAR NIELEKEZE KUHUSU NARAVIBE";
 export const SMS_URL = `sms:${SMS_NUMBER}?body=${encodeURIComponent(SMS_PRE_MESSAGE)}`;
