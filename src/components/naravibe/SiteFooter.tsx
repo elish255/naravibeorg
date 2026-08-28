@@ -26,7 +26,7 @@ export function SiteFooter() {
                 href={SMS_URL}
                 className="flex w-fit items-center gap-2 rounded-full bg-primary-foreground/10 px-4 py-2 text-sm font-medium transition-colors hover:bg-primary-foreground/20"
               >
-                <MessageCircle className="h-4 w-4" /> Send SMS · 
+                <MessageCircle className="h-4 w-4" />
               </a>
               <a
                 href={WHATSAPP_CHANNEL_URL}
