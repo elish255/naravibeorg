@@ -5,16 +5,16 @@ import logo from "@/assets/login-logo.png.asset.json";
 export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
-      { title: "Jisajili — KOZENA SITE" },
+      { title: "Jisajili — NARAVIBE" },
       {
         name: "description",
         content:
-          "Fungua akaunti yako ya KOZENA SITE kwa dakika moja, kisha lipia kwa USSD Push moja kwa moja kwenye simu yako.",
+          "Fungua akaunti yako ya NARAVIBE kwa dakika moja, kisha lipia kwa USSD Push moja kwa moja kwenye simu yako.",
       },
-      { property: "og:title", content: "Jisajili — KOZENA SITE" },
+      { property: "og:title", content: "Jisajili — NARAVIBE" },
       {
         property: "og:description",
-        content: "Fungua akaunti yako ya KOZENA SITE kisha lipia kwa USSD Push.",
+        content: "Fungua akaunti yako ya NARAVIBE kisha lipia kwa USSD Push.",
       },
     ],
   }),
@@ -89,7 +89,7 @@ function RegisterPage() {
         <div className="k-card grid grid-cols-1 lg:grid-cols-12">
           <aside className="hidden bg-k-dark p-10 text-white lg:col-span-5 lg:flex lg:flex-col">
             <div className="mb-10 inline-flex w-fit rounded-xl bg-white px-3 py-2">
-              <img src={logo.url} alt="KOZENA SITE" className="h-8 w-auto object-contain" />
+              <img src={logo.url} alt="NARAVIBE" className="h-8 w-auto object-contain" />
             </div>
             <h2 className="text-2xl font-bold">Join our community</h2>
             <p className="mt-3 text-sm text-white/60">
@@ -107,7 +107,7 @@ function RegisterPage() {
                 ),
               )}
             </div>
-            <p className="mt-auto pt-10 text-xs text-white/40">© KOZENA SITE</p>
+            <p className="mt-auto pt-10 text-xs text-white/40">© NARAVIBE</p>
           </aside>
 
           <section className="p-6 md:p-10 lg:col-span-7">
