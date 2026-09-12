@@ -10,6 +10,7 @@ import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
 import { SupportDialog } from "@/components/naravibe/SupportDialog";
 import { PayoutToasts } from "@/components/naravibe/PayoutToasts";
 import { PER_PAGE, PROFILES, TOTAL_PAGES } from "@/lib/vibe-data";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -37,8 +38,14 @@ function Dashboard() {
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState(false);
   useEffect(() => {
-    if (localStorage.getItem("naravibe_paid") !== "true") { navigate({ to: "/register" }); return; }
-    setAuthorized(true);
+    const sb = getSupabaseBrowserClient();
+    if (!sb) { navigate({ to: "/register" }); return; }
+    sb.auth.getSession().then(async ({ data }) => {
+      if (!data.session) { navigate({ to: "/login" }); return; }
+      const { data: p } = await sb.from("profiles").select("has_paid").eq("id", data.session.user.id).maybeSingle();
+      if (!p?.has_paid) { navigate({ to: "/payment" }); return; }
+      setAuthorized(true);
+    });
   }, [navigate]);
   if (!authorized) return <div className="min-h-screen bg-background" />;
   const [page, setPage] = useState(1);

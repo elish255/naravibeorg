@@ -1,45 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { Check, X, RefreshCw } from "lucide-react";
+import { CheckCircle, LogOut, RefreshCw, XCircle } from "lucide-react";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { approveManualPayment, getAdminPaymentRequests, rejectManualPayment } from "@/lib/kozena.functions";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
-type RequestItem = {
-  id: string; user_id: string; phone: string; payment_phone: string | null; amount: number; currency: string; status: string; created_at: string;
-  profiles: { full_name: string; username: string } | null;
-};
+type Request = { id:string; user_id:string; phone:string; payment_phone:string; amount:number; currency:string; status:string; created_at:string; profiles?: {full_name?:string; username?:string}|null };
 
 function AdminPage() {
-  const load = useServerFn(getAdminPaymentRequests);
-  const approve = useServerFn(approveManualPayment);
-  const reject = useServerFn(rejectManualPayment);
-  const [items, setItems] = useState<RequestItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState("");
-
-  async function refresh() {
-    setLoading(true); setError("");
-    try { setItems((await load({ data: undefined })) as RequestItem[]); }
-    catch (e) { setError(e instanceof Error ? e.message : "Imeshindikana kupakia."); }
-    finally { setLoading(false); }
-  }
-  useEffect(() => { refresh(); }, []);
-
-  async function action(id: string, kind: "approve" | "reject") {
-    setBusy(id); setError("");
-    try { if (kind === "approve") await approve({ data: { paymentId: id } }); else await reject({ data: { paymentId: id } }); await refresh(); }
-    catch (e) { setError(e instanceof Error ? e.message : "Imeshindikana."); }
-    finally { setBusy(null); }
-  }
-
-  return <main className="min-h-screen bg-k-slate-50 p-4 md:p-8 font-jost text-k-slate-800">
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex items-center justify-between gap-3"><div><h1 className="text-2xl font-extrabold text-k-green-900">Admin — Malipo</h1><p className="text-sm text-k-slate-500">Thibitisha malipo ya manual kabla ya kumfungulia user chat.</p></div><button onClick={refresh} className="rounded-xl border bg-white px-4 py-2 text-sm font-bold"><RefreshCw className="mr-2 inline h-4 w-4"/>Refresh</button></div>
-      {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
-      {loading ? <div className="rounded-2xl bg-white p-8 text-center">Inapakia...</div> : items.length === 0 ? <div className="rounded-2xl bg-white p-8 text-center text-slate-500">Hakuna malipo yanayosubiri.</div> : <div className="space-y-4">{items.map((x) => <div key={x.id} className="rounded-2xl border bg-white p-5 shadow-sm"><div className="grid gap-3 md:grid-cols-2"><div><p className="text-lg font-bold">{x.profiles?.full_name || "—"}</p><p className="text-sm text-slate-500">Username: {x.profiles?.username || "—"}</p><p className="text-sm text-slate-500">ID: {x.user_id}</p></div><div className="text-sm"><p><b>Simu iliyosajiliwa:</b> {x.phone}</p><p><b>Simu iliyotumika kulipa:</b> {x.payment_phone || "—"}</p><p><b>Kiasi:</b> {Number(x.amount).toLocaleString()} {x.currency}</p><p><b>Tarehe:</b> {new Date(x.created_at).toLocaleString()}</p></div></div><div className="mt-4 flex gap-3"><button disabled={busy===x.id} onClick={() => action(x.id,"reject")} className="flex-1 rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-bold text-red-700 disabled:opacity-50"><X className="mr-1 inline h-4 w-4"/> KATAA</button><button disabled={busy===x.id} onClick={() => action(x.id,"approve")} className="flex-1 rounded-xl bg-k-green-800 px-4 py-3 font-bold text-white disabled:opacity-50"><Check className="mr-1 inline h-4 w-4"/> THIBITISHA</button></div></div>)}</div>}
-    </div>
-  </main>;
+  const navigate=useNavigate(); const [rows,setRows]=useState<Request[]>([]); const [loading,setLoading]=useState(true); const [busy,setBusy]=useState<string|null>(null); const [error,setError]=useState<string|null>(null);
+  async function load(){ setLoading(true); setError(null); try { const sb=getSupabaseBrowserClient(); if(!sb) throw new Error("Supabase haijawekwa."); const {data}=await sb.auth.getSession(); if(!data.session){navigate({to:"/login"});return;} const r=await getAdminPaymentRequests(); setRows(r.requests as Request[]); } catch(e){setError(e instanceof Error?e.message:"Imeshindikana kupakia.");} finally{setLoading(false);} }
+  useEffect(()=>{load();},[]);
+  async function action(id:string, approve:boolean){ setBusy(id); setError(null); try { if(approve) await approveManualPayment({data:{paymentId:id}}); else await rejectManualPayment({data:{paymentId:id}}); await load(); } catch(e){setError(e instanceof Error?e.message:"Imeshindikana.");} finally{setBusy(null);} }
+  async function logout(){ const sb=getSupabaseBrowserClient(); await sb?.auth.signOut(); navigate({to:"/login"}); }
+  return <main className="min-h-screen bg-k-slate-50 p-4 md:p-8"><div className="mx-auto max-w-6xl"><div className="mb-6 flex items-center justify-between"><div><h1 className="text-2xl font-extrabold text-k-slate-900">NARAVIBE Admin</h1><p className="text-sm text-k-slate-500">Thibitisha malipo ya manual bila kufungua database.</p></div><div className="flex gap-2"><button onClick={load} className="rounded-xl border bg-white px-4 py-2 text-sm font-bold"><RefreshCw className="mr-2 inline h-4 w-4"/>Refresh</button><button onClick={logout} className="rounded-xl bg-k-dark px-4 py-2 text-sm font-bold text-white"><LogOut className="mr-2 inline h-4 w-4"/>Logout</button></div></div>{error&&<div className="mb-4 rounded-xl border border-k-red-300 bg-k-red-50 p-4 text-sm text-k-red-900">{error}</div>}<div className="overflow-x-auto rounded-2xl border bg-white"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-k-slate-50"><tr>{["USER","REGISTERED PHONE","PAYMENT PHONE","AMOUNT","STATUS","ACTION"].map(x=><th key={x} className="px-4 py-3 font-bold">{x}</th>)}</tr></thead><tbody>{loading?<tr><td colSpan={6} className="p-8 text-center">Inapakia...</td></tr>:rows.length===0?<tr><td colSpan={6} className="p-8 text-center text-k-slate-500">Hakuna malipo yanayosubiri.</td></tr>:rows.map(r=><tr key={r.id} className="border-t"><td className="px-4 py-4"><b>{r.profiles?.full_name||"—"}</b><div className="text-xs text-k-slate-500">@{r.profiles?.username||"—"}</div></td><td className="px-4 py-4">{r.phone}</td><td className="px-4 py-4 font-bold">{r.payment_phone}</td><td className="px-4 py-4">{Number(r.amount).toLocaleString()} {r.currency}</td><td className="px-4 py-4">{r.status}</td><td className="px-4 py-4"><div className="flex gap-2"><button disabled={!!busy} onClick={()=>action(r.id,true)} className="rounded-xl bg-k-green-800 px-3 py-2 font-bold text-white disabled:opacity-50"><CheckCircle className="mr-1 inline h-4 w-4"/>THIBITISHA</button><button disabled={!!busy} onClick={()=>action(r.id,false)} className="rounded-xl bg-k-red-600 px-3 py-2 font-bold text-white disabled:opacity-50"><XCircle className="mr-1 inline h-4 w-4"/>KATAA</button></div></td></tr>)}</tbody></table></div></div></main>;
 }

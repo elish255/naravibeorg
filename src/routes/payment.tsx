@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { PAYMENT_AMOUNT } from "@/lib/mobilipa.functions";
+import { submitManualPayment } from "@/lib/kozena.functions";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
@@ -99,25 +101,29 @@ function PaymentPage() {
   const [ready, setReady] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [openOperator, setOpenOperator] = useState<string | null>(null);
+  const [paymentPhone, setPaymentPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [profile, setProfile] = useState<{full_name?:string; username?:string; phone?:string; has_paid?:boolean} | null>(null);
   const manualSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("naravibe_user");
-      const paid = localStorage.getItem("naravibe_paid") === "true";
-      if (!raw) {
-        navigate({ to: "/register" });
-        return;
-      }
-      if (paid) {
-        navigate({ to: "/dashboard" });
-        return;
-      }
-      setReady(true);
-    } catch {
-      navigate({ to: "/register" });
-    }
+    const sb = getSupabaseBrowserClient();
+    if (!sb) { navigate({ to: "/register" }); return; }
+    sb.auth.getSession().then(async ({ data }) => {
+      if (!data.session) { navigate({ to: "/register" }); return; }
+      const { data: p } = await sb.from("profiles").select("full_name,username,phone,has_paid").eq("id", data.session.user.id).maybeSingle();
+      setProfile(p);
+      if (p?.has_paid) navigate({ to: "/dashboard" }); else setReady(true);
+    });
   }, [navigate]);
+
+  async function submitPayment() {
+    if (!paymentPhone.trim()) return; setSubmitting(true);
+    try { await submitManualPayment({ data: { paymentPhone } }); setSubmitted(true); }
+    catch (e) { alert(e instanceof Error ? e.message : "Imeshindikana kutuma taarifa."); }
+    finally { setSubmitting(false); }
+  }
 
   function handlePayNow() {
     setShowPopup(true);
@@ -208,6 +214,12 @@ function PaymentPage() {
           </div>
 
           <div className="px-4 pb-5 pt-3">
+            <div className="mb-5 rounded-2xl border border-k-green-200 bg-k-green-50 p-4">
+              <label className="block text-sm font-bold text-k-green-900">Weka namba ya simu uliyotumia kulipia</label>
+              <input value={paymentPhone} onChange={e=>setPaymentPhone(e.target.value.replace(/[^0-9+]/g,""))} inputMode="tel" placeholder="06XXXXXXXX" className="k-field mt-2 bg-white" />
+              <button type="button" disabled={submitting || submitted} onClick={submitPayment} className="k-btn-green mt-3 disabled:opacity-50">{submitted ? "✓ TAARIFA IMETUMWA" : submitting ? "INATUMA..." : "NIMELIPIA"}</button>
+              {submitted && <p className="mt-2 text-xs font-semibold text-k-green-800">Malipo yako yanasubiri kuthibitishwa na admin. Ukithibitishwa utaweza kuendelea.</p>}
+            </div>
             {operators.map((operator) => {
               const isOpen = openOperator === operator.id;
               return (
