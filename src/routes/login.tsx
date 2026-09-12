@@ -119,7 +119,7 @@ function LoginPage() {
 
               <p className="text-center text-sm text-k-slate-500">
                 Huna akaunti?{" "}
-                <Link to="/" className="font-bold text-k-indigo">
+                <Link to="/register" className="font-bold text-k-indigo">
                   Jisajili hapa
                 </Link>
               </p>

@@ -4,7 +4,6 @@ import { ChevronLeft, Lock, MessageCircle, Send, UserPlus, X } from "lucide-reac
 import { SiteHeader } from "@/components/naravibe/SiteHeader";
 import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
 import { PROFILES, REGISTER_URL, formatTzs, slugify } from "@/lib/vibe-data";
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export const Route = createFileRoute("/chat/$slug")({
   head: () => ({
@@ -41,38 +40,7 @@ function ChatDetails() {
   const [messages, setMessages] = useState<Bubble[]>([]);
   const [draft, setDraft] = useState("");
   const [locked, setLocked] = useState(false);
-  const [paid, setPaid] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(profile?.minutes ? profile.minutes * 60 : 0);
-  const [ended, setEnded] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const client = getSupabaseBrowserClient();
-    if (!client) { navigate({ to: "/login" }); return; }
-    client.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { navigate({ to: "/login" }); return; }
-      const { data: account } = await client.from("profiles").select("has_paid").eq("id", data.session.user.id).maybeSingle();
-      if (!account?.has_paid) { navigate({ to: "/payment" }); return; }
-      setPaid(true);
-    });
-  }, [navigate]);
-
-  useEffect(() => {
-    if (!profile || !paid || ended) return;
-    setSecondsLeft(profile.minutes * 60);
-    const timer = window.setInterval(() => {
-      setSecondsLeft((value) => {
-        if (value <= 1) {
-          window.clearInterval(timer);
-          setEnded(true);
-          setLocked(true);
-          return 0;
-        }
-        return value - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [profile, paid, ended]);
 
   useEffect(() => {
     if (!profile) return;
@@ -93,10 +61,6 @@ function ChatDetails() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
-  if (!paid) {
-    return <main className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Inakagua akaunti...</main>;
-  }
-
   if (!profile) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4 text-center">
@@ -112,6 +76,7 @@ function ChatDetails() {
     if (!draft.trim() || locked) return;
     setMessages((m) => [...m, { from: "me", text: draft.trim(), time: nowTime() }]);
     setDraft("");
+    setTimeout(() => setLocked(true), 700);
   };
 
   return (
@@ -145,7 +110,6 @@ function ChatDetails() {
           <p className="flex items-center gap-1.5 text-sm font-semibold text-brand">
             <span className="h-2 w-2 rounded-full bg-brand" /> Online Now
           </p>
-          <p className="mt-1 text-xs font-bold text-muted-foreground">Muda uliobaki: {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}</p>
         </div>
       </div>
 
@@ -206,12 +170,10 @@ function ChatDetails() {
             onKeyDown={(e) => e.key === "Enter" && send()}
             placeholder="Andika ujumbe wako..."
             aria-label="Andika ujumbe wako"
-            disabled={ended}
             className="h-12 flex-1 rounded-full border border-border bg-background px-5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-brand"
           />
           <button
             onClick={send}
-            disabled={ended}
             aria-label="Tuma ujumbe"
             className="brand-gradient flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-primary-foreground"
           >
@@ -237,20 +199,26 @@ function ChatDetails() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand">
               <Lock className="h-8 w-8 text-primary-foreground" />
             </div>
-            <h2 className="mt-4 text-2xl font-extrabold text-foreground">{ended ? "Muda wa Chat Umeisha" : "Huwezi Kutuma Ujumbe"}</h2>
+            <h2 className="mt-4 text-2xl font-extrabold text-foreground">Huwezi Kutuma Ujumbe</h2>
             <p className="mt-3 text-sm text-muted-foreground">
-              {ended ? "Muda wa mazungumzo haya umefika mwisho. Chat imefungwa; unaweza kuchagua mgeni mwingine." : <>Huwezi kutuma ujumbe kwa sasa <strong className="text-foreground">mpaka akaunti yako ithibitishwe</strong> kwenye NaraVibe.</>}
+              Huwezi kutuma ujumbe au kupata huduma hii kwa sasa{" "}
+              <strong className="text-foreground">mpaka ujisajili</strong> kwenye NaraVibe.
             </p>
-            {ended ? (
-              <button onClick={() => navigate({ to: "/dashboard" })} className="brand-gradient mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-base font-bold text-primary-foreground">
-                Funga Chat na Chagua Chat Nyingine
-              </button>
-            ) : (
-              <>
-                <a href={REGISTER_URL} className="brand-gradient mt-5 flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-base font-bold text-primary-foreground"><UserPlus className="h-5 w-5" /> Jisajili Sasa</a>
-                <button onClick={() => setLocked(false)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-base font-bold text-foreground transition-colors hover:bg-secondary"><ChevronLeft className="h-4 w-4" /> Rudi Kwenye Chat</button>
-              </>
-            )}
+            <p className="mt-2 text-sm text-muted-foreground/80">
+              Jisajili sasa ili uweze kuendelea na mazungumzo na kuanza kupata fedha.
+            </p>
+            <a
+              href={REGISTER_URL}
+              className="brand-gradient mt-5 flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-base font-bold text-primary-foreground"
+            >
+              <UserPlus className="h-5 w-5" /> Jisajili Sasa
+            </a>
+            <button
+              onClick={() => setLocked(false)}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-base font-bold text-foreground transition-colors hover:bg-secondary"
+            >
+              <ChevronLeft className="h-4 w-4" /> Rudi Kwenye Chat
+            </button>
           </div>
         </div>
       )}

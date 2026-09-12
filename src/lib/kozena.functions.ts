@@ -95,99 +95,6 @@ export const loginWithUsername = createServerFn({ method: "POST" })
     };
   });
 
-
-export const registerUser = createServerFn({ method: "POST" })
-  .validator((input: { name: string; username: string; phone: string; email: string; country: string; password: string }) => {
-    if (!input?.name?.trim() || !input?.username?.trim() || !input?.phone?.trim() || !input?.email?.trim() || !input?.password) {
-      throw new Error("Jaza taarifa zote za usajili.");
-    }
-    if (input.password.length < 6) throw new Error("Password iwe na angalau herufi 6.");
-    return input;
-  })
-  .handler(async ({ data }) => {
-    const admin = getAdminClient();
-    const username = data.username.trim();
-    const { data: existing } = await admin.from("profiles").select("id").ilike("username", username).maybeSingle();
-    if (existing) throw new Error("Username tayari imetumika.");
-    const { data: created, error } = await admin.auth.admin.createUser({
-      email: data.email.trim().toLowerCase(), password: data.password, email_confirm: true,
-      user_metadata: { full_name: data.name.trim(), username, phone: data.phone.trim(), country: data.country },
-    });
-    if (error || !created.user) throw new Error(error?.message ?? "Imeshindikana kuunda akaunti.");
-    const { error: profileError } = await admin.from("profiles").upsert({
-      id: created.user.id, full_name: data.name.trim(), username, phone: data.phone.trim(), country: data.country, has_paid: false,
-    }, { onConflict: "id" });
-    if (profileError) { await admin.auth.admin.deleteUser(created.user.id); throw new Error("Imeshindikana kuhifadhi taarifa za akaunti."); }
-    return { user_id: created.user.id };
-  });
-
-export const submitManualPayment = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: { paymentPhone: string }) => {
-    const digits = (input?.paymentPhone ?? "").replace(/\D/g, "");
-    if (digits.length < 9) throw new Error("Weka namba sahihi ya simu uliyotumia kulipia.");
-    return { paymentPhone: normalizePhone(digits) };
-  })
-  .handler(async ({ data, context }) => {
-    const admin = getAdminClient();
-    const { userId } = context;
-    const { data: profile, error: profileError } = await admin.from("profiles").select("full_name, username, phone, has_paid").eq("id", userId).single();
-    if (profileError || !profile) throw new Error("Akaunti yako haijapatikana.");
-    if (profile.has_paid) return { status: "APPROVED", message: "Akaunti yako tayari imelipiwa." };
-    const { data: pending } = await admin.from("payments").select("id,status").eq("user_id", userId).in("status", ["PENDING_MANUAL", "PENDING"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (pending) return { status: "PENDING_MANUAL", message: "Ombi lako la malipo tayari linasubiri uthibitisho." };
-    const { data: payment, error } = await admin.from("payments").insert({
-      user_id: userId, phone: profile.phone, payment_phone: data.paymentPhone, amount: PAYMENT_AMOUNT, currency: PAYMENT_CURRENCY, status: "PENDING_MANUAL",
-    }).select("id").single();
-    if (error) throw new Error(error.message);
-    await admin.from("admin_notifications").insert({ payment_id: payment.id, user_id: userId, type: "MANUAL_PAYMENT", message: `${profile.full_name || profile.username} ametuma uthibitisho wa malipo.` });
-    return { status: "PENDING_MANUAL", payment_id: payment.id, message: "Taarifa imetumwa. Subiri admin athibitishe malipo yako." };
-  });
-
-function isAdminEmail(email?: string | null) {
-  const allowed = (process.env["ADMIN_EMAILS"] ?? "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
-  return !!email && allowed.includes(email.toLowerCase());
-}
-
-async function requireAdmin(userId: string) {
-  const admin = getAdminClient();
-  const { data } = await admin.auth.admin.getUserById(userId);
-  if (!isAdminEmail(data.user?.email)) throw new Error("Admin pekee ndiye anaruhusiwa.");
-  return admin;
-}
-
-export const getAdminPaymentRequests = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const admin = await requireAdmin(context.userId);
-    const { data, error } = await admin.from("payments").select("id,user_id,phone,payment_phone,amount,currency,status,created_at,profiles(full_name,username)").eq("status", "PENDING_MANUAL").order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return data ?? [];
-  });
-
-export const approveManualPayment = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: { paymentId: string }) => { if (!input?.paymentId) throw new Error("Payment ID inahitajika."); return input; })
-  .handler(async ({ data, context }) => {
-    const admin = await requireAdmin(context.userId);
-    const { data: payment, error: pe } = await admin.from("payments").select("id,user_id,status").eq("id", data.paymentId).single();
-    if (pe || !payment) throw new Error("Malipo hayajapatikana.");
-    await admin.from("payments").update({ status: "APPROVED", verified_at: new Date().toISOString(), verified_by: context.userId }).eq("id", data.paymentId);
-    await admin.from("profiles").update({ has_paid: true }).eq("id", payment.user_id);
-    await admin.from("admin_notifications").update({ read_at: new Date().toISOString() }).eq("payment_id", data.paymentId);
-    return { ok: true };
-  });
-
-export const rejectManualPayment = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: { paymentId: string }) => { if (!input?.paymentId) throw new Error("Payment ID inahitajika."); return input; })
-  .handler(async ({ data, context }) => {
-    const admin = await requireAdmin(context.userId);
-    await admin.from("payments").update({ status: "REJECTED", verified_at: new Date().toISOString(), verified_by: context.userId }).eq("id", data.paymentId);
-    await admin.from("admin_notifications").update({ read_at: new Date().toISOString() }).eq("payment_id", data.paymentId);
-    return { ok: true };
-  });
-
 /** Create a Mobilipa order and trigger the USSD push to the customer's phone. */
 export const startPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -283,8 +190,9 @@ export const checkPaymentStatus = createServerFn({ method: "POST" })
       .eq("order_id", data.orderId)
       .eq("user_id", userId);
 
-    // Automatic payment status never unlocks the account here; admin approval is the source of truth.
-
+    if (["COMPLETED", "SUCCESS", "PAID"].includes(paymentStatus)) {
+      await supabaseAdmin.from("profiles").update({ has_paid: true }).eq("id", userId);
+    }
 
     return { payment_status: paymentStatus, transid, message: json?.message ?? null };
   });
