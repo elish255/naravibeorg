@@ -10,7 +10,9 @@ import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
 import { SupportDialog } from "@/components/naravibe/SupportDialog";
 import { PayoutToasts } from "@/components/naravibe/PayoutToasts";
 import { PER_PAGE, PROFILES, TOTAL_PAGES } from "@/lib/vibe-data";
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -38,11 +40,11 @@ function Dashboard() {
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState(false);
   useEffect(() => {
-    const sb = getSupabaseBrowserClient();
-    if (!sb) { navigate({ to: "/register" }); return; }
-    sb.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { navigate({ to: "/login" }); return; }
-      const { data: p } = await sb.from("profiles").select("has_paid").eq("id", data.session.user.id).maybeSingle();
+    const auth = getFirebaseAuth(); const db = getFirebaseDb();
+    if (!auth || !db) { navigate({ to: "/register" }); return; }
+    return onAuthStateChanged(auth, async (user) => {
+      if (!user) { navigate({ to: "/login" }); return; }
+      const p = (await getDoc(doc(db, "profiles", user.uid))).data();
       if (!p?.has_paid) { navigate({ to: "/payment" }); return; }
       setAuthorized(true);
     });

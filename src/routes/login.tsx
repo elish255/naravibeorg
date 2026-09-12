@@ -4,7 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 
 import { loginWithUsername } from "@/lib/kozena.functions";
 
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { getFirebaseAuth } from "@/lib/firebase";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -23,7 +24,6 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const supabase = getSupabaseBrowserClient();
   const signIn = useServerFn(loginWithUsername);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -31,29 +31,20 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const client = supabase;
-    if (!client) return;
-    client.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/payment" });
-    });
-  }, [navigate, supabase]);
+    const auth = getFirebaseAuth();
+    if (!auth) return;
+    return onAuthStateChanged(auth, (user) => { if (user) navigate({ to: "/payment" }); });
+  }, [navigate]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const client = supabase;
-    if (!client) {
-      setError("Mfumo wa kuingia haujaunganishwa vizuri. Tafadhali jaribu tena baadaye.");
-      return;
-    }
+    const auth = getFirebaseAuth();
+    if (!auth) { setError("Firebase haijaunganishwa vizuri. Tafadhali jaribu tena baadaye."); return; }
     setLoading(true);
     try {
-      const tokens = await signIn({ data: { username, password } });
-      const { error: sessionError } = await client.auth.setSession({
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-      });
-      if (sessionError) throw sessionError;
+      const result = await signIn({ data: { username, password } });
+      await signInWithEmailAndPassword(auth, result.email, password);
       navigate({ to: "/payment" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Imeshindikana kuingia.");

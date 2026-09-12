@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { registerUser, loginWithUsername } from "@/lib/kozena.functions";
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { getFirebaseAuth } from "@/lib/firebase";
+import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
 import logo from "@/assets/login-logo.png.asset.json";
 
 export const Route = createFileRoute("/register")({
@@ -50,8 +51,9 @@ function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const sb = getSupabaseBrowserClient();
-    sb?.auth.getSession().then(({ data }) => { if (data.session) navigate({ to: "/payment" }); });
+    const auth = getFirebaseAuth();
+    if (!auth) return;
+    return onAuthStateChanged(auth, (user) => { if (user) navigate({ to: "/payment" }); });
   }, [navigate]);
 
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -62,11 +64,10 @@ function RegisterPage() {
     setLoading(true);
     try {
       await registerUser({ data: { name: form.name, username: form.username, phone: form.phone, email: form.email, country: form.country, password: form.password } });
-      const auth = await loginWithUsername({ data: { username: form.username, password: form.password } });
-      const sb = getSupabaseBrowserClient();
-      if (!sb) throw new Error("Supabase haijawekwa.");
-      const { error } = await sb.auth.setSession({ access_token: auth.access_token, refresh_token: auth.refresh_token });
-      if (error) throw error;
+      const authInfo = await loginWithUsername({ data: { username: form.username, password: form.password } });
+      const firebaseAuth = getFirebaseAuth();
+      if (!firebaseAuth) throw new Error("Firebase haijawekwa.");
+      await signInWithEmailAndPassword(firebaseAuth, authInfo.email, form.password);
       navigate({ to: "/payment" });
     } catch (e) { setError(e instanceof Error ? e.message : "Imeshindikana kufungua akaunti."); } finally { setLoading(false); }
   }

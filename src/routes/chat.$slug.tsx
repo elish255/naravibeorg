@@ -2,7 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, Lock, MessageCircle, Send, UserPlus, X } from "lucide-react";
 import { SiteHeader } from "@/components/naravibe/SiteHeader";
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
 import { PROFILES, formatTzs, slugify } from "@/lib/vibe-data";
 
@@ -47,11 +49,11 @@ function ChatDetails() {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const sb = getSupabaseBrowserClient();
-    if (!sb) return;
-    sb.auth.getSession().then(async ({ data }) => {
-      if (!data.session) return;
-      const { data: p } = await sb.from("profiles").select("has_paid").eq("id", data.session.user.id).maybeSingle();
+    const auth = getFirebaseAuth(); const db = getFirebaseDb();
+    if (!auth || !db) return;
+    return onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      const p = (await getDoc(doc(db, "profiles", user.uid))).data();
       setPaid(Boolean(p?.has_paid));
     });
   }, []);

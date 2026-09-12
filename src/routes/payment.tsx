@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { PAYMENT_AMOUNT } from "@/lib/mobilipa.functions";
 import { submitManualPayment } from "@/lib/kozena.functions";
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
@@ -108,12 +110,12 @@ function PaymentPage() {
   const manualSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const sb = getSupabaseBrowserClient();
-    if (!sb) { navigate({ to: "/register" }); return; }
-    sb.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { navigate({ to: "/register" }); return; }
-      const { data: p } = await sb.from("profiles").select("full_name,username,phone,has_paid").eq("id", data.session.user.id).maybeSingle();
-      setProfile(p);
+    const auth = getFirebaseAuth(); const db = getFirebaseDb();
+    if (!auth || !db) { navigate({ to: "/register" }); return; }
+    return onAuthStateChanged(auth, async (user) => {
+      if (!user) { navigate({ to: "/register" }); return; }
+      const p = (await getDoc(doc(db, "profiles", user.uid))).data();
+      setProfile(p as {full_name?:string; username?:string; phone?:string; has_paid?:boolean});
       if (p?.has_paid) navigate({ to: "/dashboard" }); else setReady(true);
     });
   }, [navigate]);
