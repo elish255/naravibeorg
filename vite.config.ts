@@ -19,4 +19,17 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Firebase Admin / Firestore must stay as real Node dependencies on Vercel.
+  // Bundling @google-cloud/firestore into the ESM server bundle causes
+  // "__dirname is not defined in ES module scope" at runtime.
+  nitro: {
+    externals: {
+      external: [
+        "firebase-admin",
+        "@google-cloud/firestore",
+        "google-gax",
+        "google-auth-library",
+      ],
+    },
+  },
 });

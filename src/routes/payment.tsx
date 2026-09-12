@@ -30,7 +30,7 @@ type Operator = {
   steps: string[];
 };
 
-const LIPA_NUMBER = "251161660";
+const LIPA_NUMBER = "354136248";
 
 const operators: Operator[] = [
   {
@@ -43,7 +43,7 @@ const operators: Operator[] = [
       "Bonyeza *150*00#",
       "Chagua Lipa kwa M-PESA",
       "Chagua LIPA KWA SIMU HALOPESA",
-      "Weka LIPA NAMBA: 251161660",
+      "Weka LIPA NAMBA: 354136248",
       "Weka kiasi 15,000 TZS",
       "Weka namba ya siri",
     ],
@@ -59,7 +59,7 @@ const operators: Operator[] = [
       "Chagua Lipa kwa simu",
       "Chagua Kwenda mitandao mingine",
       "Chagua HALOPESA",
-      "Weka LIPA NAMBA: 251161660",
+      "Weka LIPA NAMBA: 354136248",
       "Weka kiasi 15,000 TZS",
       "Weka namba ya siri",
     ],
@@ -76,7 +76,7 @@ const operators: Operator[] = [
       "Chagua LIPA KWA SIMU (MITANDAO YOTE)",
       "Chagua LIPA KWA HALOPESA",
       "Weka kiasi 15,000 TZS",
-      "Ingiza kumbukumbu ya malipo: 251161660",
+      "Ingiza kumbukumbu ya malipo: 354136248",
       "Ingiza namba ya siri kuruhusu muamala",
     ],
   },
@@ -90,7 +90,7 @@ const operators: Operator[] = [
       "Bonyeza *150*88#",
       "Chagua namba (5) Lipia Bidhaa",
       "Chagua HALOPESA",
-      "Weka namba ya malipo: 251161660",
+      "Weka namba ya malipo: 354136248",
       "Weka kiasi 15,000 TZS",
       "Ingiza namba ya siri",
       "Bonyeza 1 kuruhusu muamala",
