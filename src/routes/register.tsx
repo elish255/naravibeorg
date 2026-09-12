@@ -1,5 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { registerUser, loginWithUsername } from "@/lib/kozena.functions";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import logo from "@/assets/login-logo.png.asset.json";
 
 export const Route = createFileRoute("/register")({
@@ -47,13 +50,14 @@ function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const register = useServerFn(registerUser);
+  const signIn = useServerFn(loginWithUsername);
+
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("naravibe_user");
-      const paid = localStorage.getItem("naravibe_paid") === "true";
-      if (raw && paid) navigate({ to: "/dashboard" });
-      else if (raw) navigate({ to: "/payment" });
-    } catch {}
+    const client = getSupabaseBrowserClient();
+    client?.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/payment" });
+    });
   }, [navigate]);
 
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -67,19 +71,26 @@ function RegisterPage() {
     }
     setLoading(true);
     try {
-      localStorage.setItem(
-        "naravibe_user",
-        JSON.stringify({
-          name: form.name, username: form.username, phone: form.phone, email: form.email,
-          country: form.country, password: form.password, created_at: new Date().toISOString(),
-        }),
-      );
-      localStorage.removeItem("naravibe_paid");
-      setLoading(false);
+      await register({
+        data: {
+          name: form.name.trim(),
+          username: form.username.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+          country: form.country,
+          password: form.password,
+        },
+      });
+      const tokens = await signIn({ data: { username: form.username.trim(), password: form.password } });
+      const client = getSupabaseBrowserClient();
+      if (!client) throw new Error("Supabase haijaunganishwa.");
+      const { error: sessionError } = await client.auth.setSession(tokens);
+      if (sessionError) throw sessionError;
       navigate({ to: "/payment" });
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Imeshindikana kusajili akaunti.");
+    } finally {
       setLoading(false);
-      setError("Imeshindikana kuhifadhi taarifa zako.");
     }
   }
 
@@ -213,7 +224,7 @@ function RegisterPage() {
                 </button>
                 <p className="mt-4 text-center text-sm text-k-slate-500">
                   Tayari una akaunti?{" "}
-                  <Link to="/register" className="font-bold text-k-indigo">
+                  <Link to="/login" className="font-bold text-k-indigo">
                     Login
                   </Link>
                 </p>

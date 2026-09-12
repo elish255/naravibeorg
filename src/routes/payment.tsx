@@ -1,5 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { submitManualPayment } from "@/lib/kozena.functions";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { PAYMENT_AMOUNT } from "@/lib/mobilipa.functions";
 
 export const Route = createFileRoute("/payment")({
@@ -99,25 +102,39 @@ function PaymentPage() {
   const [ready, setReady] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [openOperator, setOpenOperator] = useState<string | null>(null);
+  const [paymentPhone, setPaymentPhone] = useState("");
+  const [registeredPhone, setRegisteredPhone] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [submitState, setSubmitState] = useState<"idle" | "loading" | "sent">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const submitPayment = useServerFn(submitManualPayment);
   const manualSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("naravibe_user");
-      const paid = localStorage.getItem("naravibe_paid") === "true";
-      if (!raw) {
-        navigate({ to: "/register" });
-        return;
-      }
-      if (paid) {
-        navigate({ to: "/dashboard" });
-        return;
-      }
+    const client = getSupabaseBrowserClient();
+    if (!client) { navigate({ to: "/login" }); return; }
+    client.auth.getSession().then(async ({ data }) => {
+      if (!data.session) { navigate({ to: "/login" }); return; }
+      const { data: profile } = await client.from("profiles").select("full_name, phone, has_paid").eq("id", data.session.user.id).maybeSingle();
+      if (profile?.has_paid) { navigate({ to: "/dashboard" }); return; }
+      setRegisteredPhone(profile?.phone ?? "");
+      setFullName(profile?.full_name ?? "");
       setReady(true);
-    } catch {
-      navigate({ to: "/register" });
-    }
+    });
   }, [navigate]);
+
+  async function submitPaymentProof() {
+    setError(null);
+    if (!paymentPhone.trim()) { setError("Weka namba ya simu uliyotumia kulipia."); return; }
+    setSubmitState("loading");
+    try {
+      await submitPayment({ data: { paymentPhone } });
+      setSubmitState("sent");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Imeshindikana kutuma taarifa.");
+      setSubmitState("idle");
+    }
+  }
 
   function handlePayNow() {
     setShowPopup(true);
@@ -205,6 +222,21 @@ function PaymentPage() {
           <div className="px-5 pb-2 pt-5">
             <h2 className="text-xl font-extrabold text-k-green-900">Lipa namba hizi</h2>
             <p className="mt-1 text-sm text-k-slate-500">Chagua mtandao wako</p>
+          </div>
+
+          <div className="mx-4 mb-5 rounded-2xl border border-k-green-200 bg-k-green-50 p-4">
+            <p className="text-sm font-semibold text-k-green-900">Akaunti: {fullName || "NARAVIBE Member"}</p>
+            <p className="mt-1 text-xs text-k-green-700">Namba iliyosajiliwa: {registeredPhone || "—"}</p>
+            <label className="mt-4 block">
+              <span className="mb-1 block text-xs font-bold text-k-green-900">Weka namba ya simu uliyotumia kulipia</span>
+              <input className="k-field bg-white" inputMode="tel" placeholder="06XXXXXXXX" value={paymentPhone} onChange={(e) => setPaymentPhone(e.target.value.replace(/[^0-9+]/g, ""))} disabled={submitState === "loading" || submitState === "sent"} />
+            </label>
+            {error && <p className="mt-2 text-xs font-semibold text-red-700">{error}</p>}
+            {submitState === "sent" ? (
+              <div className="mt-3 rounded-xl border border-k-green-300 bg-white px-3 py-3 text-sm font-semibold text-k-green-900">✓ Taarifa imetumwa. Malipo yako yanasubiri kuthibitishwa na admin.</div>
+            ) : (
+              <button type="button" onClick={submitPaymentProof} disabled={submitState === "loading"} className="k-btn-green mt-3 disabled:opacity-60">{submitState === "loading" ? "Inatuma..." : "NIMELIPIA"}</button>
+            )}
           </div>
 
           <div className="px-4 pb-5 pt-3">
