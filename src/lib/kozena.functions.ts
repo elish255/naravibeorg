@@ -2,7 +2,7 @@ import { createServerFn, createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 
-export const PAYMENT_AMOUNT = 14500;
+export const PAYMENT_AMOUNT = 15000;
 export const PAYMENT_CURRENCY = "TZS";
 
 export const registerUser = createServerFn({ method: "POST" })
