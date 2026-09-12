@@ -2,9 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, Lock, MessageCircle, Send, UserPlus, X } from "lucide-react";
 import { SiteHeader } from "@/components/naravibe/SiteHeader";
-import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
 import { PROFILES, formatTzs, slugify } from "@/lib/vibe-data";
 
@@ -49,13 +46,7 @@ function ChatDetails() {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const auth = getFirebaseAuth(); const db = getFirebaseDb();
-    if (!auth || !db) return;
-    return onAuthStateChanged(auth, async (user) => {
-      if (!user) return;
-      const p = (await getDoc(doc(db, "profiles", user.uid))).data();
-      setPaid(Boolean(p?.has_paid));
-    });
+    setPaid(localStorage.getItem("naravibe_paid") === "1");
   }, []);
 
   useEffect(() => {

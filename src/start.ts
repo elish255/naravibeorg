@@ -1,16 +1,6 @@
 import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
-import { getFirebaseAuth } from "@/lib/firebase";
-
-const attachFirebaseAuth = createMiddleware({ type: "function" }).client(
-  async ({ next }) => {
-    const auth = getFirebaseAuth();
-    const user = auth?.currentUser;
-    const token = user ? await user.getIdToken() : null;
-    return next({ headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  },
-);
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -36,5 +26,5 @@ const csrfMiddleware = createCsrfMiddleware({
 
 export const startInstance = createStart(() => ({
   requestMiddleware: [errorMiddleware, csrfMiddleware],
-  functionMiddleware: [attachFirebaseAuth],
+  
 }));

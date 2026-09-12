@@ -10,9 +10,6 @@ import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
 import { SupportDialog } from "@/components/naravibe/SupportDialog";
 import { PayoutToasts } from "@/components/naravibe/PayoutToasts";
 import { PER_PAGE, PROFILES, TOTAL_PAGES } from "@/lib/vibe-data";
-import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -40,14 +37,11 @@ function Dashboard() {
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState(false);
   useEffect(() => {
-    const auth = getFirebaseAuth(); const db = getFirebaseDb();
-    if (!auth || !db) { navigate({ to: "/register" }); return; }
-    return onAuthStateChanged(auth, async (user) => {
-      if (!user) { navigate({ to: "/login" }); return; }
-      const p = (await getDoc(doc(db, "profiles", user.uid))).data();
-      if (!p?.has_paid) { navigate({ to: "/payment" }); return; }
-      setAuthorized(true);
-    });
+    const registered = localStorage.getItem("naravibe_registered");
+    const paid = localStorage.getItem("naravibe_paid");
+    if (!registered) navigate({ to: "/register" });
+    else if (paid !== "1") navigate({ to: "/payment" });
+    else setAuthorized(true);
   }, [navigate]);
   if (!authorized) return <div className="min-h-screen bg-background" />;
   const [page, setPage] = useState(1);

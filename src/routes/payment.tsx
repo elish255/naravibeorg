@@ -1,10 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import { PAYMENT_AMOUNT } from "@/lib/mobilipa.functions";
-import { submitManualPayment } from "@/lib/kozena.functions";
-import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { createFileRoute } from "@tanstack/react-router";
+import { useRef, useState } from "react";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
@@ -30,7 +25,7 @@ type Operator = {
   steps: string[];
 };
 
-const LIPA_NUMBER = "354136248";
+const LIPA_NUMBER = "251161660";
 
 const operators: Operator[] = [
   {
@@ -43,7 +38,7 @@ const operators: Operator[] = [
       "Bonyeza *150*00#",
       "Chagua Lipa kwa M-PESA",
       "Chagua LIPA KWA SIMU HALOPESA",
-      "Weka LIPA NAMBA: 354136248",
+      "Weka LIPA NAMBA: 251161660",
       "Weka kiasi 15,000 TZS",
       "Weka namba ya siri",
     ],
@@ -59,7 +54,7 @@ const operators: Operator[] = [
       "Chagua Lipa kwa simu",
       "Chagua Kwenda mitandao mingine",
       "Chagua HALOPESA",
-      "Weka LIPA NAMBA: 354136248",
+      "Weka LIPA NAMBA: 251161660",
       "Weka kiasi 15,000 TZS",
       "Weka namba ya siri",
     ],
@@ -76,7 +71,7 @@ const operators: Operator[] = [
       "Chagua LIPA KWA SIMU (MITANDAO YOTE)",
       "Chagua LIPA KWA HALOPESA",
       "Weka kiasi 15,000 TZS",
-      "Ingiza kumbukumbu ya malipo: 354136248",
+      "Ingiza kumbukumbu ya malipo: 251161660",
       "Ingiza namba ya siri kuruhusu muamala",
     ],
   },
@@ -90,7 +85,7 @@ const operators: Operator[] = [
       "Bonyeza *150*88#",
       "Chagua namba (5) Lipia Bidhaa",
       "Chagua HALOPESA",
-      "Weka namba ya malipo: 354136248",
+      "Weka namba ya malipo: 251161660",
       "Weka kiasi 15,000 TZS",
       "Ingiza namba ya siri",
       "Bonyeza 1 kuruhusu muamala",
@@ -99,32 +94,17 @@ const operators: Operator[] = [
 ];
 
 function PaymentPage() {
-  const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
+  const PAYMENT_AMOUNT = 15000;
   const [showPopup, setShowPopup] = useState(false);
   const [openOperator, setOpenOperator] = useState<string | null>(null);
   const [paymentPhone, setPaymentPhone] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [profile, setProfile] = useState<{full_name?:string; username?:string; phone?:string; has_paid?:boolean} | null>(null);
   const manualSectionRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    const auth = getFirebaseAuth(); const db = getFirebaseDb();
-    if (!auth || !db) { navigate({ to: "/register" }); return; }
-    return onAuthStateChanged(auth, async (user) => {
-      if (!user) { navigate({ to: "/register" }); return; }
-      const p = (await getDoc(doc(db, "profiles", user.uid))).data();
-      setProfile(p as {full_name?:string; username?:string; phone?:string; has_paid?:boolean});
-      if (p?.has_paid) navigate({ to: "/dashboard" }); else setReady(true);
-    });
-  }, [navigate]);
-
-  async function submitPayment() {
-    if (!paymentPhone.trim()) return; setSubmitting(true);
-    try { await submitManualPayment({ data: { paymentPhone } }); setSubmitted(true); }
-    catch (e) { alert(e instanceof Error ? e.message : "Imeshindikana kutuma taarifa."); }
-    finally { setSubmitting(false); }
+  function submitPayment() {
+    if (!paymentPhone.trim()) { alert("Weka namba ya simu uliyotumia kulipia."); return; }
+    localStorage.setItem("naravibe_payment_phone", paymentPhone);
+    setSubmitted(true);
   }
 
   function handlePayNow() {
@@ -146,8 +126,7 @@ function PaymentPage() {
     }
   }
 
-  if (!ready) {
-    return (
+  return (
       <main className="flex min-h-screen items-center justify-center bg-k-slate-50 font-jost text-k-slate-500">
         Inapakia...
       </main>
@@ -219,7 +198,7 @@ function PaymentPage() {
             <div className="mb-5 rounded-2xl border border-k-green-200 bg-k-green-50 p-4">
               <label className="block text-sm font-bold text-k-green-900">Weka namba ya simu uliyotumia kulipia</label>
               <input value={paymentPhone} onChange={e=>setPaymentPhone(e.target.value.replace(/[^0-9+]/g,""))} inputMode="tel" placeholder="06XXXXXXXX" className="k-field mt-2 bg-white" />
-              <button type="button" disabled={submitting || submitted} onClick={submitPayment} className="k-btn-green mt-3 disabled:opacity-50">{submitted ? "✓ TAARIFA IMETUMWA" : submitting ? "INATUMA..." : "NIMELIPIA"}</button>
+              <button type="button" disabled={submitted} onClick={submitPayment} className="k-btn-green mt-3 disabled:opacity-50">{submitted ? "✓ TAARIFA IMEPOKELEWA" : "NIMELIPIA"}</button>
               {submitted && <p className="mt-2 text-xs font-semibold text-k-green-800">Malipo yako yanasubiri kuthibitishwa na admin. Ukithibitishwa utaweza kuendelea.</p>}
             </div>
             {operators.map((operator) => {
