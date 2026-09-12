@@ -1,5 +1,6 @@
 import { Eye, User, Wallet } from "lucide-react";
 import { REGISTER_URL } from "@/lib/vibe-data";
+import { Link } from "@tanstack/react-router";
 
 const nav = [
   { label: "Home", href: "#home" },
@@ -63,12 +64,12 @@ export function SiteHeader() {
           </div>
         </div>
 
-        <a
-          href={REGISTER_URL}
+        <Link
+          to="/login"
           className="flex shrink-0 items-center gap-2 rounded-full bg-card px-5 py-2 text-sm font-semibold text-foreground"
         >
           <User className="h-4 w-4" /> Login
-        </a>
+        </Link>
       </div>
     </header>
   );

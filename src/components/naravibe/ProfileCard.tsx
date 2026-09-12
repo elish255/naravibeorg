@@ -64,8 +64,7 @@ export function ProfileCard({ profile }: { profile: Profile }) {
       </div>
 
       <Link
-        to="/chat/$slug"
-        params={{ slug: slugify(profile.name) }}
+        to="/register"
         className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-bold tracking-wide text-foreground transition-colors hover:bg-secondary"
       >
         <MessageCircle className="h-4 w-4" /> START CHAT
