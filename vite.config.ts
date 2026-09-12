@@ -9,6 +9,22 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 export default defineConfig({
   // Also accept Supabase integration variables named NEXT_PUBLIC_* on Vercel.
   vite: {
+    ssr: {
+      external: [
+        "firebase-admin",
+        "@google-cloud/firestore",
+        "google-gax",
+        "google-auth-library",
+      ],
+    },
+    optimizeDeps: {
+      exclude: [
+        "firebase-admin",
+        "@google-cloud/firestore",
+        "google-gax",
+        "google-auth-library",
+      ],
+    },
     define: {
       "import.meta.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_URL || ""),
       "import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ""),
