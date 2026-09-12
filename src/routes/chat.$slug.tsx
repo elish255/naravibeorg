@@ -41,27 +41,27 @@ function ChatDetails() {
   const [messages, setMessages] = useState<Bubble[]>([]);
   const [draft, setDraft] = useState("");
   const [locked, setLocked] = useState(false);
-  const [authorized, setAuthorized] = useState(false);
+  const [paid, setPaid] = useState(false);
+  const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [timeLeft, setTimeLeft] = useState(profile?.minutes ? profile.minutes * 60 : 0);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const sb = getSupabaseBrowserClient();
-    if (!sb) { navigate({ to: "/register" }); return; }
+    if (!sb) return;
     sb.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { navigate({ to: "/register" }); return; }
+      if (!data.session) return;
       const { data: p } = await sb.from("profiles").select("has_paid").eq("id", data.session.user.id).maybeSingle();
-      if (!p?.has_paid) { navigate({ to: "/payment" }); return; }
-      setAuthorized(true);
+      setPaid(Boolean(p?.has_paid));
     });
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
-    if (!authorized || !profile || locked) return;
+    if (!paid || !profile || locked) return;
     if (timeLeft <= 0) { setLocked(true); return; }
     const timer = window.setInterval(() => setTimeLeft((v) => Math.max(0, v - 1)), 1000);
     return () => window.clearInterval(timer);
-  }, [authorized, profile, locked, timeLeft]);
+  }, [paid, profile, locked, timeLeft]);
 
   useEffect(() => {
     if (!profile) return;
@@ -82,8 +82,6 @@ function ChatDetails() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
-  if (!authorized) return <div className="min-h-screen bg-background" />;
-
   if (!profile) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4 text-center">
@@ -97,9 +95,12 @@ function ChatDetails() {
 
   const send = () => {
     if (!draft.trim() || locked) return;
+    if (!paid) {
+      setShowRegisterPrompt(true);
+      return;
+    }
     setMessages((m) => [...m, { from: "me", text: draft.trim(), time: nowTime() }]);
     setDraft("");
-
   };
 
   return (
@@ -205,44 +206,39 @@ function ChatDetails() {
         </div>
       </div>
 
-      {locked && (
+      {showRegisterPrompt && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="card-soft relative w-full max-w-md rounded-3xl bg-card p-6 text-center"
-          >
-            <button
-              onClick={() => navigate({ to: "/dashboard" })}
-              aria-label="Funga"
-              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
-            >
+          <div role="dialog" aria-modal="true" className="card-soft relative w-full max-w-md rounded-3xl bg-card p-6 text-center">
+            <button type="button" onClick={() => setShowRegisterPrompt(false)} aria-label="Rudi nyuma" className="absolute right-4 top-4 text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand">
               <Lock className="h-8 w-8 text-primary-foreground" />
             </div>
+            <h2 className="mt-4 text-2xl font-extrabold text-foreground">Jisajili ili uendelee</h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Ili uweze kuendelea kuchat na kupata malipo yako, unatakiwa kujisajili kwa mtaji wa <strong className="text-foreground">TZS 15,000</strong>.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => navigate({ to: "/register" })} className="brand-gradient flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-base font-bold text-primary-foreground">
+                <UserPlus className="h-5 w-5" /> Jisajili SASA
+              </button>
+              <button type="button" onClick={() => setShowRegisterPrompt(false)} className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3.5 text-base font-bold text-foreground transition-colors hover:bg-secondary">
+                <ChevronLeft className="h-4 w-4" /> Rudi nyuma
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {locked && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" className="card-soft relative w-full max-w-md rounded-3xl bg-card p-6 text-center">
+            <button type="button" onClick={() => navigate({ to: "/dashboard" })} aria-label="Funga" className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand"><Lock className="h-8 w-8 text-primary-foreground" /></div>
             <h2 className="mt-4 text-2xl font-extrabold text-foreground">Muda wa Chat Umeisha</h2>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Huwezi kutuma ujumbe au kupata huduma hii kwa sasa{" "}
-              <strong className="text-foreground">mpaka ujisajili</strong> kwenye NaraVibe.
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground/80">
-              Funga chat hii ili uweze kuchagua chat nyingine.
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate({ to: "/dashboard" })}
-              className="brand-gradient mt-5 flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-base font-bold text-primary-foreground"
-            >
-              <UserPlus className="h-5 w-5" /> Funga Chat na Chagua Chat Nyingine
-            </button>
-            <button
-              onClick={() => navigate({ to: "/dashboard" })}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-base font-bold text-foreground transition-colors hover:bg-secondary"
-            >
-              <ChevronLeft className="h-4 w-4" /> Rudi Kwenye Chat
-            </button>
+            <p className="mt-3 text-sm text-muted-foreground">Muda wako wa mazungumzo umeisha. Rudi kwenye dashboard kuchagua chat nyingine.</p>
+            <button type="button" onClick={() => navigate({ to: "/dashboard" })} className="brand-gradient mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-base font-bold text-primary-foreground"><UserPlus className="h-5 w-5" /> Chagua Chat Nyingine</button>
           </div>
         </div>
       )}
