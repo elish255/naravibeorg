@@ -1,5 +1,4 @@
 import { Eye, User, Wallet } from "lucide-react";
-import { REGISTER_URL } from "@/lib/vibe-data";
 import { Link } from "@tanstack/react-router";
 
 const nav = [
@@ -44,13 +43,13 @@ export function SiteHeader() {
               <strong>2,535</strong> live
             </span>
             <a
-              href={REGISTER_URL}
+              href="/dashboard"
               className="brand-pill flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold"
             >
               <Wallet className="h-4 w-4" /> Withdraw
             </a>
             <a
-              href={REGISTER_URL}
+              href="/dashboard"
               className="flex items-center gap-2 rounded-full bg-primary-foreground/10 px-3 py-1.5 text-primary-foreground"
             >
               <Eye className="h-4 w-4" />

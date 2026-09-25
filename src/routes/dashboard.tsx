@@ -1,118 +1,31 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { MessageCircle } from "lucide-react";
-import { SiteHeader } from "@/components/naravibe/SiteHeader";
-import { SiteFooter } from "@/components/naravibe/SiteFooter";
-import { AboutSection } from "@/components/naravibe/AboutSection";
-import { ProfileCard } from "@/components/naravibe/ProfileCard";
-import { WhatsAppFab } from "@/components/naravibe/WhatsAppFab";
-import { SupportDialog } from "@/components/naravibe/SupportDialog";
-import { PayoutToasts } from "@/components/naravibe/PayoutToasts";
-import { PER_PAGE, PROFILES, TOTAL_PAGES } from "@/lib/vibe-data";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect,useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Bell,LogOut,X,Banknote,MessageCircle,Wallet } from "lucide-react";
+import { getMe,getNotifications,dismissNotification,requestWithdrawal,logout,getChatSession } from "@/lib/app.functions";
+import { people,type Person } from "@/data/people";
 
-export const Route = createFileRoute("/dashboard")({
-  head: () => ({
-    meta: [
-      { title: "NaraVibe | Get Paid to Chat with Foreigners" },
-      {
-        name: "description",
-        content:
-          "Ungana na wageni kutoka nchi mbalimbali, wafundishe Kiswahili na ulipwe kwa muda unaotumia kuchati. Jisajili NaraVibe leo.",
-      },
-      { property: "og:title", content: "NaraVibe – Lipwa kwa Kuchati na Wageni Duniani" },
-      {
-        property: "og:description",
-        content:
-          "Chagua mgeni, chati kuhusu mada anayopenda, na ulipwe kwa TZS kwa kila dakika ya mazungumzo.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: Dashboard,
-});
+export const Route=createFileRoute("/dashboard")({component:Dashboard,head:()=>({meta:[{title:"Dashboard — NARAVIBE"},{name:"robots",content:"noindex,nofollow"}]})});
+const money=(v:any)=>`TZS ${Number(v??0).toLocaleString("en-US")}`;
 
-function Dashboard() {
-  const navigate = useNavigate();
-  const [authorized, setAuthorized] = useState(false);
-  useEffect(() => {
-    const registered = localStorage.getItem("naravibe_registered");
-    const paid = localStorage.getItem("naravibe_paid");
-    if (!registered) navigate({ to: "/register" });
-    else if (paid !== "1") navigate({ to: "/payment" });
-    else setAuthorized(true);
-  }, [navigate]);
-  if (!authorized) return <div className="min-h-screen bg-background" />;
-  const [page, setPage] = useState(1);
-  const [supportOpen, setSupportOpen] = useState(false);
-  const start = (page - 1) * PER_PAGE;
-  const visible = PROFILES.slice(start, start + PER_PAGE);
-
-  return (
-    <div id="home" className="min-h-screen bg-background font-sans">
-      <SiteHeader />
-
-      <section className="hero-surface px-4 pb-10 pt-14 text-center md:px-6">
-        <h1 className="mx-auto max-w-4xl text-3xl font-extrabold leading-tight tracking-tight text-foreground md:text-5xl">
-          Get paid by <span className="text-brand">chatting with foreigners</span> about different
-          topics
-        </h1>
-        <p className="mx-auto mt-5 max-w-xl text-sm text-muted-foreground md:text-base">
-          Ungana na wageni kutoka nchi mbalimbali duniani, wafundishe Kiswahili, na ulipwe kwa muda
-          unaotumia kuchati.
-        </p>
-        <span className="mx-auto mt-8 block h-1 w-16 rounded-full bg-brand" />
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 pt-6 md:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="h-0.5 w-8 rounded-full bg-brand" />
-            <h2 className="text-xs font-bold tracking-[0.2em] text-muted-foreground">
-              AVAILABLE NOW
-            </h2>
-          </div>
-          <button
-            onClick={() => setSupportOpen(true)}
-            className="card-soft flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground"
-          >
-            <MessageCircle className="h-4 w-4 text-brand" /> Customer services
-          </button>
-        </div>
-
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((profile) => (
-            <ProfileCard key={profile.name} profile={profile} />
-          ))}
-        </div>
-
-        <div className="mt-10 flex items-center justify-center gap-3">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground disabled:opacity-40"
-          >
-            ← Prev
-          </button>
-          <span className="text-sm font-semibold text-muted-foreground">
-            Page {page} / {TOTAL_PAGES}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(TOTAL_PAGES, p + 1))}
-            disabled={page === TOTAL_PAGES}
-            className="brand-pill rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-40"
-          >
-            Next →
-          </button>
-        </div>
-      </section>
-
-      <AboutSection />
-      <SiteFooter />
-      <WhatsAppFab />
-      <PayoutToasts />
-      <SupportDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
-    </div>
-  );
+function Dashboard(){
+ const nav=useNavigate(); const load=useServerFn(getMe); const notes=useServerFn(getNotifications); const dismiss=useServerFn(dismissNotification); const withdraw=useServerFn(requestWithdrawal); const signout=useServerFn(logout); const startChat=useServerFn(getChatSession);
+ const [user,setUser]=useState<any>(null),[notifications,setNotifications]=useState<any[]>([]),[showN,setShowN]=useState(false),[showW,setShowW]=useState(false),[amount,setAmount]=useState("50000"),[phone,setPhone]=useState(""),[notice,setNotice]=useState("");
+ const refresh=async()=>{try{const m=await load();if(!m.user){await nav({to:"/login"});return} if(["banned","deactivated","rejected"].includes(String(m.user.status))){await nav({to:"/login"});return} setUser(m.user);setNotifications((await notes()).notifications)}catch{await nav({to:"/login"})}};
+ useEffect(()=>{void refresh()},[]);
+ const doLogout=async()=>{await signout();await nav({to:"/"})};
+ const submit=async(e:React.FormEvent)=>{e.preventDefault();setNotice("");try{await withdraw({data:{amount:Number(amount),phone}});setShowW(false);setNotice("Ombi la withdrawal limetumwa kwa admin.");await refresh()}catch(e){setNotice(e instanceof Error&&e.message.includes("INSUFFICIENT")?"Salio halitoshi.":"Withdrawal haikufanikiwa.")}};
+ const openChat=async(p:Person)=>{try{const s=await startChat({data:{slug:p.name.toLowerCase(),payout:Number(p.price.replace(/\D/g,""))}});await nav({to:"/chat/$slug",params:{slug:p.name.toLowerCase()},search:{session:String(s.id)}} as any)}catch(e){if(e instanceof Error&&e.message.includes("ACCOUNT_NOT_ACTIVE")) await nav({to:"/payment"});else setNotice("Chat haijafunguka. Tafadhali jaribu tena.")}};
+ if(!user)return <main className="grid min-h-screen place-items-center bg-background">Inapakia dashboard...</main>;
+ const active=String(user.status)==="active";
+ return <main className="min-h-screen bg-background pb-20"><div className="mx-auto max-w-3xl px-4 py-5">
+ <header className="flex items-center justify-between rounded-3xl bg-card p-4 shadow-card"><div><p className="text-xs font-bold tracking-widest text-muted-foreground">NARAVIBE</p><h1 className="mt-1 text-xl font-extrabold text-foreground">Karibu, {String(user.name).split(" ")[0]} 👋</h1></div><button onClick={()=>void doLogout()} className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary"><LogOut className="h-4 w-4"/></button></header>
+ <div className="mt-4 flex justify-end relative"><button onClick={()=>setShowN(v=>!v)} className="relative flex h-12 w-12 items-center justify-center rounded-full bg-card shadow-card"><Bell className="h-5 w-5"/>{notifications.length>0&&<span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-black text-white">{notifications.length}</span>}</button>{showN&&<div className="absolute right-0 top-14 z-40 w-[min(22rem,calc(100vw-2rem))] rounded-3xl bg-card p-3 shadow-cta"><div className="flex justify-between px-2 py-2 font-bold">Notifications<button onClick={()=>setShowN(false)}><X className="h-4 w-4"/></button></div>{notifications.map(n=><div key={n.id} className="mt-2 rounded-2xl bg-secondary p-3"><p className="font-bold">{n.title}</p><p className="text-sm text-muted-foreground">{n.message}</p><button className="mt-1 text-xs underline" onClick={()=>void dismiss({data:{notificationId:String(n.id)}})}>Funga</button></div>)}</div>}</div></div>
+ {!active&&<div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><b>Akaunti bado haija-activate.</b> Malizia malipo ili ufungue chat.</div>}
+ <section className="mt-4 rounded-3xl brand-gradient p-5 text-primary-foreground shadow-cta"><p className="text-sm font-semibold opacity-90">CURRENT BALANCE</p><p className="mt-1 text-4xl font-black">{money(user.balance)}</p><div className="mt-4 grid grid-cols-2 gap-2"><div className="rounded-2xl bg-white/15 p-3"><p className="text-xs opacity-80">Withdrawn</p><p className="font-bold">{money(user.withdrawn)}</p></div><div className="rounded-2xl bg-white/15 p-3"><p className="text-xs opacity-80">Status</p><p className="font-bold">{active?"ACTIVE":"PENDING"}</p></div></div></section>
+ <div className="mt-4 grid grid-cols-2 gap-3"><button onClick={()=>setShowW(true)} disabled={!active||Number(user.balance)<50000} className="flex items-center justify-center gap-2 rounded-2xl bg-card p-4 font-extrabold shadow-card disabled:opacity-50"><Banknote className="h-5 w-5"/> Withdrawal</button><Link to="/payment" className="flex items-center justify-center gap-2 rounded-2xl bg-card p-4 font-extrabold shadow-card"><Wallet className="h-5 w-5"/> Payment</Link></div>
+ {notice&&<div className="mt-3 rounded-2xl bg-secondary p-4 text-sm font-semibold">{notice}</div>}
+ <section className="mt-7"><div className="flex items-center justify-between"><h2 className="text-xl font-extrabold">Wazungu walio tayari kuchat</h2><span className="text-xs font-bold text-success">ACTIVE</span></div><div className="mt-4 space-y-3">{people.map(p=><article key={p.name} className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-card"><img src={p.photo} className="h-14 w-14 rounded-full object-cover" alt={p.name}/><div className="min-w-0 flex-1"><p className="font-bold">{p.name}</p><p className="text-xs text-muted-foreground">{p.topic} · {p.price}</p></div><button disabled={!active} onClick={()=>void openChat(p)} className="rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50"><MessageCircle className="inline h-3 w-3 mr-1"/>CHAT</button></article>)}</div></section>
+ {showW&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><form onSubmit={submit} className="w-full max-w-md rounded-3xl bg-card p-6 shadow-cta"><div className="flex justify-between"><h2 className="text-xl font-extrabold">Withdrawal</h2><button type="button" onClick={()=>setShowW(false)}><X/></button></div><p className="mt-2 text-sm text-muted-foreground">Minimum TZS 50,000.</p><input type="number" min="50000" value={amount} onChange={e=>setAmount(e.target.value)} className="mt-4 w-full rounded-xl border bg-background px-4 py-3"/><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="0712345678" className="mt-3 w-full rounded-xl border bg-background px-4 py-3"/><button className="mt-4 w-full rounded-full bg-primary py-3.5 font-bold text-primary-foreground">TUMA OMBI</button></form></div>}
+ </main>
 }

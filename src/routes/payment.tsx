@@ -1,295 +1,141 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { ArrowLeft, CheckCircle2, Loader2, Smartphone, Copy, ShieldCheck, Clock3 } from "lucide-react";
+import { createAutomaticPayment, checkAutomaticPayment } from "@/lib/automatic-payment.functions";
+import { getMe, submitManualPayment } from "@/lib/app.functions";
 
 export const Route = createFileRoute("/payment")({
-  head: () => ({
-    meta: [
-      { title: "Lipa — NARAVIBE" },
-      {
-        name: "description",
-        content: "Lipia ada ya NARAVIBE kwa Lipa Namba kupitia mtandao wako wa simu.",
-      },
-      { property: "og:title", content: "Lipa — NARAVIBE" },
-      { property: "og:description", content: "Chagua mtandao wako na tumia Lipa Namba." },
-    ],
-  }),
-  component: PaymentPage,
+  component: Lipa,
+  head: () => ({ meta: [
+    { title: "Activation Payment — NARAVIBE" },
+    { name: "description", content: `Lipa activation fee ya TZS ${ACTIVATION_FEE.toLocaleString()} kupitia malipo ya moja kwa moja au Lipa Namba.` },
+    { name: "robots", content: "noindex, nofollow" },
+  ] }),
 });
 
-type Operator = {
-  id: string;
-  name: string;
-  ussd: string;
-  logo: string;
-  alt: string;
-  steps: string[];
-};
+function normalize(phone: string) {
+  const d = phone.replace(/\D/g, "");
+  if (d.startsWith("255")) return d;
+  if (d.startsWith("0")) return `255${d.slice(1)}`;
+  return d.length === 9 ? `255${d}` : d;
+}
 
-const LIPA_NUMBER = "251161660";
+const ACTIVATION_FEE = Number(import.meta.env.VITE_ACTIVATION_FEE || "15000");
+const LIPA_NUMBER = import.meta.env.VITE_LIPA_NUMBER || "251161660";
+const LIPA_BUSINESS = import.meta.env.VITE_LIPA_BUSINESS || "NARAVIBE";
 
-const operators: Operator[] = [
-  {
-    id: "vodacom",
-    name: "Vodacom M-Pesa",
-    ussd: "*150*00#",
-    logo: "https://brandlogos.net/wp-content/uploads/2025/04/vodacom-logo_brandlogos.net_4uzfe.png",
-    alt: "Vodacom",
-    steps: [
-      "Bonyeza *150*00#",
-      "Chagua Lipa kwa M-PESA",
-      "Chagua LIPA KWA SIMU HALOPESA",
-      "Weka LIPA NAMBA: 251161660",
-      "Weka kiasi 15,000 TZS",
-      "Weka namba ya siri",
-    ],
-  },
-  {
-    id: "mixx",
-    name: "Mixx by Yas",
-    ussd: "*150*01#",
-    logo: "https://www.uminolan.co.tz/assets/images/supa-agent/mixx-by-yas-seeklogo2.png",
-    alt: "Mixx by Yas",
-    steps: [
-      "Bonyeza *150*01#",
-      "Chagua Lipa kwa simu",
-      "Chagua Kwenda mitandao mingine",
-      "Chagua HALOPESA",
-      "Weka LIPA NAMBA: 251161660",
-      "Weka kiasi 15,000 TZS",
-      "Weka namba ya siri",
-    ],
-  },
-  {
-    id: "airtel",
-    name: "Airtel Money",
-    ussd: "*150*60#",
-    logo: "https://nikulipe.com/wp-content/uploads/2022/09/Airtel_logo_PNG1.png",
-    alt: "Airtel",
-    steps: [
-      "Bonyeza *150*60#",
-      "Chagua Lipia Bili",
-      "Chagua LIPA KWA SIMU (MITANDAO YOTE)",
-      "Chagua LIPA KWA HALOPESA",
-      "Weka kiasi 15,000 TZS",
-      "Ingiza kumbukumbu ya malipo: 251161660",
-      "Ingiza namba ya siri kuruhusu muamala",
-    ],
-  },
-  {
-    id: "halopesa",
-    name: "Halopesa",
-    ussd: "*150*88#",
-    logo: "https://halopesa.co.tz/images/applications-system.png",
-    alt: "Halopesa",
-    steps: [
-      "Bonyeza *150*88#",
-      "Chagua namba (5) Lipia Bidhaa",
-      "Chagua HALOPESA",
-      "Weka namba ya malipo: 251161660",
-      "Weka kiasi 15,000 TZS",
-      "Ingiza namba ya siri",
-      "Bonyeza 1 kuruhusu muamala",
-    ],
-  },
-];
+function Lipa() {
+  const navigate = useNavigate();
+  const createPayment = useServerFn(createAutomaticPayment);
+  const checkPayment = useServerFn(checkAutomaticPayment);
+  const manualPayment = useServerFn(submitManualPayment);
+  const me = useServerFn(getMe);
+  const [phone, setPhone] = useState("");
+  const [method, setMethod] = useState<"automatic" | "lipa_namba">("automatic");
+  const [orderId, setOrderId] = useState("");
+  const [status, setStatus] = useState("PENDING");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [manualSent, setManualSent] = useState(false);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-function PaymentPage() {
-  const PAYMENT_AMOUNT = 15000;
-  const [showPopup, setShowPopup] = useState(false);
-  const [openOperator, setOpenOperator] = useState<string | null>(null);
-  const [paymentPhone, setPaymentPhone] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const manualSectionRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void me().then((res) => {
+        if (res.user?.status === "active") void navigate({ to: "/dashboard" });
+      }).catch(() => undefined);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [me, navigate]);
 
-  function submitPayment() {
-    if (!paymentPhone.trim()) { alert("Weka namba ya simu uliyotumia kulipia."); return; }
-    localStorage.setItem("naravibe_payment_phone", paymentPhone);
-    setSubmitted(true);
-  }
+  useEffect(() => {
+    void me().then((res) => { if (res.user?.status === "active") void navigate({ to: "/dashboard" }); if (res.user?.phone) setPhone(String(res.user.phone)); }).catch(() => undefined);
+  }, [me, navigate]);
 
-  function handlePayNow() {
-    setShowPopup(true);
-  }
+  useEffect(() => {
+    if (!orderId) return;
+    let tries = 0;
+    const poll = async () => {
+      tries += 1;
+      try {
+        const res = await checkPayment({ data: { orderId } });
+        setStatus(res.status);
+        if (res.status === "SUCCESS") { if (timer.current) clearInterval(timer.current); await navigate({ to: "/dashboard" }); }
+        if (res.status === "FAILED") { if (timer.current) clearInterval(timer.current); setError("Malipo hayajakamilika. Jaribu tena."); }
+      } catch { /* subiri poll inayofuata */ }
+      if (tries >= 60 && timer.current) clearInterval(timer.current);
+    };
+    timer.current = setInterval(poll, 5000);
+    void poll();
+    return () => { if (timer.current) clearInterval(timer.current); };
+  }, [orderId, checkPayment, navigate]);
 
-  function handleClosePopup() {
-    setShowPopup(false);
-    window.setTimeout(() => {
-      manualSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 80);
-  }
-
-  async function copyText(text: string) {
+  async function startAutomaticPayment(e: React.FormEvent) {
+    e.preventDefault(); setError(""); setMessage("");
+    const msisdn = normalize(phone);
+    if (!/^255\d{9}$/.test(msisdn)) { setError("Weka namba sahihi, mfano 0712345678."); return; }
+    setLoading(true);
     try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // Clipboard may be unavailable in some browsers.
-    }
+      const res = await createPayment({ data: { phone: msisdn } });
+      if (res.orderId === "already-active") { await navigate({ to: "/dashboard" }); return; }
+      setOrderId(res.orderId); setStatus("PENDING"); setMessage(res.message);
+    } catch (err) { setError(err instanceof Error ? err.message : "Imeshindwa kuanzisha malipo."); }
+    finally { setLoading(false); }
   }
+
+  async function submitManual(e: React.FormEvent) {
+    e.preventDefault(); setError(""); setMessage("");
+    const msisdn = normalize(phone);
+    if (!/^255\d{9}$/.test(msisdn)) { setError("Weka namba sahihi, mfano 0712345678."); return; }
+    setLoading(true);
+    try { await manualPayment({ data: { phone: msisdn } }); setManualSent(true); setMessage("Taarifa imetumwa kwa admin. Subiri uthibitisho wa muamala."); }
+    catch (err) { setError(err instanceof Error ? err.message : "Imeshindikana kutuma taarifa."); }
+    finally { setLoading(false); }
+  }
+
+  async function copyNumber() { try { await navigator.clipboard.writeText(LIPA_NUMBER); setMessage("Lipa Namba ime-copyiwa."); } catch { /* ignore */ } }
 
   return (
-    <div className="min-h-screen bg-k-slate-50 font-jost text-k-slate-800">
-      <header className="flex items-center justify-between bg-k-green-900 px-6 py-4">
-        <span className="text-lg font-extrabold tracking-tight text-white">
-          NARAVIBE <span className="text-k-amber-400">SITE</span>
-        </span>
-        <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] tracking-wide text-k-green-100">
-          MALIPO SALAMA
-        </span>
-      </header>
+    <main className="min-h-screen bg-background px-4 py-8">
+      <div className="mx-auto w-full max-w-xl">
+        <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><ArrowLeft className="h-4 w-4" /> Rudi mwanzo</Link>
+        <div className="mt-4 rounded-3xl bg-card p-5 shadow-card sm:p-6">
+          <img src="/logo.png" alt="NARAVIBE" className="mx-auto h-20 w-full object-contain" />
+          <h1 className="mt-2 text-center text-2xl font-extrabold text-foreground">Activation Fee TZS {ACTIVATION_FEE.toLocaleString()}</h1>
+          <p className="mt-2 text-center text-sm text-muted-foreground">Chagua njia moja ya malipo hapa chini.</p>
 
-      <main className="mx-auto max-w-xl px-4 pb-16 pt-7">
-        <div className="mb-6 flex gap-3 rounded-2xl border-[1.5px] border-k-red-300 bg-k-red-50 p-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-k-red-100 text-k-red-600">
-            🛡
+          <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-secondary p-1">
+            <button type="button" onClick={() => setMethod("automatic")} className={`rounded-xl px-3 py-3 text-sm font-extrabold ${method === "automatic" ? "bg-card text-primary shadow-card" : "text-muted-foreground"}`}>Malipo ya Moja kwa Moja</button>
+            <button type="button" onClick={() => setMethod("lipa_namba")} className={`rounded-xl px-3 py-3 text-sm font-extrabold ${method === "lipa_namba" ? "bg-card text-primary shadow-card" : "text-muted-foreground"}`}>Lipa Namba</button>
           </div>
-          <div>
-            <h2 className="text-xs font-bold tracking-widest text-k-red-600">LINDA PESA YAKO</h2>
-            <p className="mt-1 text-sm leading-relaxed text-k-red-900">
-              Lipia kupitia mfumo huu pekee. Malipo nje ya mfumo huu ni batili na hayatakubaliwa.
-            </p>
-          </div>
+
+          {method === "automatic" ? (
+            <form onSubmit={startAutomaticPayment} className="mt-5 space-y-4">
+              <div><label className="text-sm font-semibold text-foreground">Namba ya simu</label><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0712345678" className="mt-1 w-full rounded-xl bg-secondary px-4 py-3 text-sm text-foreground outline-none" /></div>
+              <div className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground"><strong className="text-foreground">Malipo ya moja kwa moja:</strong> bonyeza LIPA SASA, kisha thibitisha push kwenye simu yako. Mfumo utaangalia order status na account ita-activate moja kwa moja ikipatikana malipo yaliyofanikiwa.</div>
+              {error && <p className="rounded-xl bg-destructive/10 p-3 text-sm font-semibold text-destructive">{error}</p>}
+              {message && <p className="rounded-xl bg-success/10 p-3 text-sm font-semibold text-success">{message}</p>}
+              <button type="submit" disabled={loading || !!orderId} className="flex w-full items-center justify-center gap-2 rounded-full gradient-success py-3.5 font-bold text-success-foreground shadow-cta disabled:opacity-60">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}{orderId ? "INASUBIRI UTHIBITISHO..." : "LIPA SASA"}</button>
+              {orderId && <div className="rounded-2xl border border-border p-4 text-center"><Clock3 className="mx-auto h-7 w-7 animate-pulse text-primary" /><p className="mt-2 text-sm font-bold text-foreground">Subiri uthibitisho wa malipo</p><p className="mt-1 text-xs text-muted-foreground">Order: {orderId} · Status: {status}</p></div>}
+            </form>
+          ) : (
+            <div className="mt-5 space-y-4">
+              <div className="rounded-3xl gradient-blue p-5 text-center text-primary-foreground shadow-cta"><p className="text-xs font-bold uppercase tracking-widest opacity-80">LIPA NAMBA</p><div className="mt-1 text-3xl font-black tracking-wider">{LIPA_NUMBER}</div><p className="mt-1 text-sm font-semibold">{LIPA_BUSINESS}</p><button type="button" onClick={copyNumber} className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-bold"><Copy className="h-4 w-4" /> Copy</button></div>
+              <div className="rounded-2xl bg-secondary p-4"><p className="font-extrabold text-foreground">Kiasi: TZS {ACTIVATION_FEE.toLocaleString()}</p><p className="mt-2 text-sm text-muted-foreground">Lipa kwa M-Pesa, Mixx by Yas, Airtel Money au HaloPesa kwa kutumia Lipa Namba hapo juu.</p></div>
+              <div className="space-y-2">{[
+                [`Vodacom M-Pesa`, `*150*00# → Lipa kwa M-PESA → Lipa kwa simu → weka ${LIPA_NUMBER} → ${ACTIVATION_FEE.toLocaleString()}`],
+                [`Mixx by Yas`, `*150*01# → Lipa kwa simu → mitandao mingine → HaloPesa → ${LIPA_NUMBER} → ${ACTIVATION_FEE.toLocaleString()}`],
+                [`Airtel Money`, `*150*60# → Lipia Bili → Lipa kwa simu → HaloPesa → kumbukumbu ${LIPA_NUMBER} → ${ACTIVATION_FEE.toLocaleString()}`],
+                [`HaloPesa`, `*150*88# → Lipia Bidhaa → HaloPesa → ${LIPA_NUMBER} → ${ACTIVATION_FEE.toLocaleString()}`],
+              ].map(([name, steps]) => <div key={name} className="rounded-2xl border border-border bg-card p-4"><p className="font-bold text-foreground">{name}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{steps}</p></div>)}</div>
+              <form onSubmit={submitManual} className="space-y-3 rounded-2xl border border-border p-4"><label className="text-sm font-semibold text-foreground">Baada ya kulipa, weka namba uliyotumia</label><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0712345678" className="w-full rounded-xl bg-secondary px-4 py-3 text-sm text-foreground outline-none" />{error && <p className="text-sm font-semibold text-destructive">{error}</p>}{message && <p className="text-sm font-semibold text-success">{message}</p>}<button type="submit" disabled={loading || manualSent} className="w-full rounded-full gradient-success py-3.5 font-bold text-success-foreground shadow-cta disabled:opacity-60">{manualSent ? "IMETUMWA KWA ADMIN" : loading ? "INATUMA..." : "NIMELIPIA"}</button></form>
+              <div className="flex items-start gap-2 rounded-2xl bg-secondary p-4 text-xs text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" /> Admin atathibitisha muamala. Baada ya approval, utaweza kuingia Dashboard moja kwa moja.</div>
+            </div>
+          )}
         </div>
-
-        <div className="mb-5 flex gap-2">
-          <span className="flex items-center gap-2 rounded-full border-[1.5px] border-k-green-800 bg-k-green-800 px-4 py-2 text-[13px] text-white">
-            🇹🇿 Tanzania
-          </span>
-        </div>
-
-        <section className="mb-6 overflow-hidden rounded-3xl border-[1.5px] border-k-slate-200 bg-white">
-          <div className="flex items-center gap-3 border-b border-k-slate-100 px-5 py-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-k-green-50 text-k-green-700">
-              💳
-            </div>
-            <div>
-              <h3 className="font-semibold">Tanzania</h3>
-              <p className="text-xs text-k-slate-500">Lipa kwa Lipa Namba</p>
-            </div>
-          </div>
-
-          <div className="px-5 py-5">
-            <div className="mb-4 flex items-center justify-between rounded-2xl bg-k-green-50 px-4 py-3">
-              <span className="text-sm text-k-green-700">Kiasi cha kulipa</span>
-              <span className="text-lg font-bold text-k-green-900">
-                {PAYMENT_AMOUNT.toLocaleString()} TZS
-              </span>
-            </div>
-
-            <button type="button" onClick={handlePayNow} className="k-btn-green hover:opacity-90">
-              🔒 LIPA SASA
-            </button>
-          </div>
-        </section>
-
-        <section ref={manualSectionRef} className="scroll-mt-5 overflow-hidden rounded-3xl border-[1.5px] border-k-slate-200 bg-white">
-          <div className="px-5 pb-2 pt-5">
-            <h2 className="text-xl font-extrabold text-k-green-900">Lipa namba hizi</h2>
-            <p className="mt-1 text-sm text-k-slate-500">Chagua mtandao wako</p>
-          </div>
-
-          <div className="px-4 pb-5 pt-3">
-            <div className="mb-5 rounded-2xl border border-k-green-200 bg-k-green-50 p-4">
-              <label className="block text-sm font-bold text-k-green-900">Weka namba ya simu uliyotumia kulipia</label>
-              <input value={paymentPhone} onChange={e=>setPaymentPhone(e.target.value.replace(/[^0-9+]/g,""))} inputMode="tel" placeholder="06XXXXXXXX" className="k-field mt-2 bg-white" />
-              <button type="button" disabled={submitted} onClick={submitPayment} className="k-btn-green mt-3 disabled:opacity-50">{submitted ? "✓ TAARIFA IMEPOKELEWA" : "NIMELIPIA"}</button>
-              {submitted && <p className="mt-2 text-xs font-semibold text-k-green-800">Malipo yako yanasubiri kuthibitishwa na admin. Ukithibitishwa utaweza kuendelea.</p>}
-            </div>
-            {operators.map((operator) => {
-              const isOpen = openOperator === operator.id;
-              return (
-                <div key={operator.id} className="overflow-hidden border-b border-k-slate-100 last:border-b-0">
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 px-1 py-4 text-left"
-                    onClick={() => setOpenOperator(isOpen ? null : operator.id)}
-                    aria-expanded={isOpen}
-                  >
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-k-slate-200 bg-white p-2">
-                      <img src={operator.logo} alt={operator.alt} className="max-h-full max-w-full object-contain" loading="lazy" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-bold text-k-slate-800">{operator.name}</div>
-                      <div className="text-sm text-k-slate-500">{operator.ussd}</div>
-                    </div>
-                    <svg
-                      className={`h-6 w-6 shrink-0 text-k-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  {isOpen && (
-                    <div className="pb-5 pl-1 pr-1">
-                      <ul className="space-y-2">
-                        {operator.steps.map((step, index) => {
-                          const containsNumber = step.includes(LIPA_NUMBER);
-                          return (
-                            <li
-                              key={`${operator.id}-${index}`}
-                              className={`flex items-start gap-3 rounded-xl px-3 py-3 text-sm ${containsNumber ? "border border-k-green-200 bg-k-green-50" : "bg-k-slate-50"}`}
-                            >
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-k-green-800 text-xs font-bold text-white">
-                                {index + 1}
-                              </span>
-                              <span className="min-w-0 flex-1 leading-relaxed">
-                                {containsNumber ? (
-                                  <>
-                                    {step.split(LIPA_NUMBER)[0]}
-                                    <strong className="text-k-green-900">{LIPA_NUMBER}</strong>
-                                    {step.split(LIPA_NUMBER)[1]}
-                                  </>
-                                ) : (
-                                  step
-                                )}
-                              </span>
-                              {containsNumber && (
-                                <button
-                                  type="button"
-                                  onClick={() => copyText(LIPA_NUMBER)}
-                                  className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-bold text-k-green-800 shadow-sm ring-1 ring-k-green-200"
-                                >
-                                  Copy
-                                </button>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
-
-                      <div className="mt-3 rounded-xl border border-k-amber-200 bg-k-amber-50 px-4 py-3 text-sm text-k-slate-700">
-                        Jina la Biashara: <strong>ASSERT BRIDGE</strong>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      </main>
-
-      {showPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5" role="dialog" aria-modal="true" aria-labelledby="ussd-unavailable-title">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-k-red-50 text-2xl">
-              ⚠️
-            </div>
-            <h2 id="ussd-unavailable-title" className="text-lg font-extrabold text-k-slate-900">
-              NJIA YA USSD PUSH HAIPATIKANI KWA SASA
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-k-slate-500">
-              TUMIA LIPA NAMBA
-            </p>
-            <button type="button" onClick={handleClosePopup} className="k-btn-green mt-5 hover:opacity-90">
-              CLOSE
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
+    </main>
   );
 }

@@ -1,7 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-
-export const Route = createFileRoute("/login")({ component: LoginPage });
-
-function LoginPage() {
-  return <main className="k-auth-bg flex min-h-screen items-center justify-center px-4 py-10"><div className="k-card w-full max-w-lg p-8 text-center"><h1 className="text-2xl font-bold">Jisajili kwanza</h1><p className="mt-3 text-sm text-k-slate-500">Kwa sasa hakuna mfumo wa login/database. Jaza fomu ya usajili kisha utaelekezwa moja kwa moja kwenye ukurasa wa malipo.</p><Link to="/register" className="k-btn mt-6 inline-flex">JISJILI SASA</Link></div></main>;
-}
+import {createFileRoute,useNavigate} from "@tanstack/react-router";
+import {useState} from "react"; import {useServerFn} from "@tanstack/react-start"; import {loginUser} from "@/lib/app.functions";
+export const Route=createFileRoute("/login")({component:Login});
+function Login(){const nav=useNavigate();const login=useServerFn(loginUser);const [username,setUsername]=useState("");const [password,setPassword]=useState("");const [err,setErr]=useState("");const submit=async(e:React.FormEvent)=>{e.preventDefault();try{const r=await login({data:{username,password}});setErr("");await nav({to:r.status==="active"?"/dashboard":"/payment"})}catch{setErr("Username/email au password si sahihi, au akaunti imezuiwa.")}};return <main className="min-h-screen bg-background p-4"><div className="mx-auto max-w-md py-10"><form onSubmit={submit} className="rounded-3xl bg-card p-6 shadow-card"><h1 className="text-2xl font-black">Ingia — NARAVIBE</h1><input value={username} onChange={e=>setUsername(e.target.value)} placeholder="Username au Email" className="mt-5 w-full rounded-xl border bg-background p-3"/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" className="mt-3 w-full rounded-xl border bg-background p-3"/>{err&&<p className="mt-3 text-sm text-destructive">{err}</p>}<button className="mt-4 w-full rounded-xl bg-primary py-3.5 font-bold text-primary-foreground">LOGIN</button><button type="button" onClick={()=>void nav({to:"/register"})} className="mt-3 w-full py-2 text-sm underline">Jisajili</button></form></div></main>}
